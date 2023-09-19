@@ -60,9 +60,9 @@ class CameraService {
         case .authorized:
             break
         case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { granted in
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 if !granted {
-                    self.setupResult = .notAuthorized
+                    self?.setupResult = .notAuthorized
                 }
             }
         default:
@@ -71,58 +71,58 @@ class CameraService {
     }
     
     private func addCameraDeviceInput(position: Position = .back) {
-        if let old = self.videoDeviceInput {
-            self.session.removeInput(old)
+        if let old = videoDeviceInput {
+            session.removeInput(old)
         }
         if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position.avPosition) {
             if let videoDeviceInput = try? AVCaptureDeviceInput(device: device) {
-                if self.session.canAddInput(videoDeviceInput) {
-                    self.session.addInput(videoDeviceInput)
+                if session.canAddInput(videoDeviceInput) {
+                    session.addInput(videoDeviceInput)
                     self.videoDeviceInput = videoDeviceInput
                 }
             }
         }
         // 防抖
-        if let photoOutputConnection = self.photoOutput.connection(with: .video), photoOutputConnection.isVideoStabilizationSupported {
+        if let photoOutputConnection = photoOutput.connection(with: .video), photoOutputConnection.isVideoStabilizationSupported {
             photoOutputConnection.preferredVideoStabilizationMode = .standard
         }
     }
     
     func changeCamera() {
-        self.cameraPosition.toggle()
-        self.session.beginConfiguration()
-        self.addCameraDeviceInput(position: self.cameraPosition)
-        self.session.commitConfiguration()
+        cameraPosition.toggle()
+        session.beginConfiguration()
+        addCameraDeviceInput(position: cameraPosition)
+        session.commitConfiguration()
     }
     
     func configureSession() {
         if setupResult != .success {
             return
         }
-        self.session.beginConfiguration()
-        self.session.sessionPreset = .photo
+        session.beginConfiguration()
+        session.sessionPreset = .photo
         
-        self.addCameraDeviceInput(position: self.cameraPosition)
+        addCameraDeviceInput(position: cameraPosition)
         
-        if self.session.canAddOutput(photoOutput) {
-            self.session.addOutput(photoOutput)
+        if session.canAddOutput(photoOutput) {
+            session.addOutput(photoOutput)
         } else {
             print("Could not add photo output to the session")
             setupResult = .configurationFailed
-            self.session.commitConfiguration()
+            session.commitConfiguration()
             return
         }
         
-        self.session.commitConfiguration()
+        session.commitConfiguration()
         
-        self.start()
+        start()
     }
     
     private func start() {
-        switch self.setupResult {
+        switch setupResult {
         case .success:
-            if !self.session.isRunning {
-                self.session.startRunning()
+            if !session.isRunning {
+                session.startRunning()
             }
         case .configurationFailed, .notAuthorized:
             print("Application not authorized to use camera")
@@ -135,13 +135,35 @@ class CameraService {
         }
     }
     
+    func focus(pointOfInterest: CGPoint) {
+        guard let device = videoDeviceInput?.device, device.isFocusPointOfInterestSupported else {
+            return
+        }
+        do {
+            try device.lockForConfiguration()
+            device.focusPointOfInterest = pointOfInterest
+            if device.isFocusModeSupported(.autoFocus) {
+                device.focusMode = .autoFocus
+            }
+            device.unlockForConfiguration()
+        } catch {
+            
+        }
+    }
+    
     func capturePhoto(rawOption: RAWSaveOption) {
-        guard self.setupResult != .configurationFailed else {
+        guard setupResult != .configurationFailed else {
             return
         }
         
-        if let photoOutputConnection = self.photoOutput.connection(with: .video), photoOutputConnection.isVideoOrientationSupported {
+        if let photoOutputConnection = photoOutput.connection(with: .video), photoOutputConnection.isVideoOrientationSupported {
             photoOutputConnection.videoOrientation = OrientationListener.shared.videoOrientation
+        }
+        
+        guard let photoOutputConnection = photoOutput.connection(with: .video), photoOutputConnection.isActive, photoOutputConnection.isEnabled else {
+            alertError = AlertError(title: "Camera Error", message: "Simulator Camera Not Working", primaryButtonTitle: "OK", secondaryButtonTitle: nil, primaryAction: nil, secondaryAction: nil)
+            shouldShowAlertView = true
+            return
         }
         
         let rawFormat = photoOutput.availableRawPhotoPixelFormatTypes.first { code in
@@ -169,22 +191,22 @@ class CameraService {
 //            ]
         // 这部分很难弄，很多信息要填
 //        }
-        if self.videoDeviceInput?.device.isFlashAvailable == true {
-            photoSettings.flashMode = self.flashMode
+        if videoDeviceInput?.device.isFlashAvailable == true {
+            photoSettings.flashMode = flashMode
         }
         
         // Create a delegate to monitor the capture process.
         let delegate = RAWCaptureDelegate(option: rawOption)
-        self.inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = delegate
+        inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = delegate
         
-        self.willCapturePhoto = true
+        willCapturePhoto = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.willCapturePhoto = false
         }
         // Remove the delegate reference when it finishes its processing.
-        delegate.didFinish = { phot in
-            self.inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = nil
-            self.photo = phot
+        delegate.didFinish = { [weak self] phot in
+            self?.inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = nil
+            self?.photo = phot
         }
         
         // Tell the output to capture the photo.

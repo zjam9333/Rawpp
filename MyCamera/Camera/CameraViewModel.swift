@@ -94,4 +94,10 @@ import AVFoundation
             service.flashMode = service.flashMode == .on ? .off : .on
         }
     }
+    
+    func focus(pointOfInterest: CGPoint) {
+        DispatchQueue.global().async { [self] in
+            service.focus(pointOfInterest: pointOfInterest)
+        }
+    }
 }

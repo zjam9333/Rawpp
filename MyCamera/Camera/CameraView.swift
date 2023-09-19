@@ -10,34 +10,6 @@ import AVFoundation
 import UIKit
 import SwiftUI
 
-struct CameraPreview: UIViewRepresentable {
-    // 1.
-    class VideoPreviewView: UIView {
-        override class var layerClass: AnyClass {
-             AVCaptureVideoPreviewLayer.self
-        }
-        
-        var videoPreviewLayer: AVCaptureVideoPreviewLayer {
-            return layer as! AVCaptureVideoPreviewLayer
-        }
-    }
-    
-    let session: AVCaptureSession?
-    
-    func makeUIView(context: Context) -> VideoPreviewView {
-        let view = VideoPreviewView()
-        view.backgroundColor = .black
-        view.videoPreviewLayer.session = session
-        view.videoPreviewLayer.connection?.videoOrientation = .portrait
-        view.contentMode = .scaleAspectFill
-        return view
-    }
-    
-    func updateUIView(_ uiView: VideoPreviewView, context: Context) {
-        
-    }
-}
-
 @MainActor struct CameraView: View {
     @StateObject var model = CameraViewModel()
     @EnvironmentObject var orientation: OrientationListener
@@ -51,13 +23,14 @@ struct CameraPreview: UIViewRepresentable {
         Button(action: {
             model.capturePhoto()
         }, label: {
+            let buttonSiz: CGFloat = 74
             Circle()
                 .foregroundColor(model.isCapturing ? .gray : .white)
-                .frame(width: bottomButtonSize + 20, height: bottomButtonSize + 20, alignment: .center)
+                .frame(width: buttonSiz, height: buttonSiz, alignment: .center)
                 .overlay(
                     Circle()
                         .stroke(Color.black, lineWidth: 1)
-                        .frame(width: bottomButtonSize, height: bottomButtonSize, alignment: .center)
+                        .frame(width: buttonSiz - 20, height: buttonSiz - 20, alignment: .center)
                 )
         })
     }
@@ -143,6 +116,12 @@ struct CameraPreview: UIViewRepresentable {
                         if model.isCapturing {
                             Color(.black).opacity(0.5)
                         }
+                        TouchView { point in
+                            // touch Auto focus
+                            print("PointOfInterest", point)
+                            model.focus(pointOfInterest: point)
+                        }
+                        .padding(10)
                     }
                     
                     HStack {
@@ -178,5 +157,68 @@ extension View {
             }
         }
         rotationEffect(degree).animation(.default, value: videoOrientation)
+    }
+}
+
+struct CameraPreview: UIViewRepresentable {
+    // 1.
+    class VideoPreviewView: UIView {
+        override class var layerClass: AnyClass {
+            AVCaptureVideoPreviewLayer.self
+        }
+        
+        var videoPreviewLayer: AVCaptureVideoPreviewLayer {
+            return layer as! AVCaptureVideoPreviewLayer
+        }
+    }
+    
+    let session: AVCaptureSession?
+    
+    func makeUIView(context: Context) -> VideoPreviewView {
+        let view = VideoPreviewView()
+        view.backgroundColor = .black
+        view.videoPreviewLayer.session = session
+        view.videoPreviewLayer.connection?.videoOrientation = .portrait
+        view.contentMode = .scaleAspectFill
+        return view
+    }
+    
+    func updateUIView(_ uiView: VideoPreviewView, context: Context) {
+        
+    }
+}
+
+struct TouchView: UIViewRepresentable {
+    typealias TouchHandler = (CGPoint) -> Void
+    
+    class MyView: UIView {
+        let touchHander: TouchHandler
+        
+        init(touchHander: @escaping TouchHandler) {
+            self.touchHander = touchHander
+            super.init(frame: .zero)
+            self.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapGestureRecognizer(sender:))))
+        }
+        
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+        
+        @objc func tapGestureRecognizer(sender: UITapGestureRecognizer) {
+            let p = sender.location(in: self)
+            let size = bounds.size
+            touchHander(.init(x: p.x / size.width, y: p.y / size.height))
+        }
+    }
+    
+    let touchHandler: TouchHandler
+    
+    func makeUIView(context: Context) -> MyView {
+        let view = MyView(touchHander: touchHandler)
+        return view
+    }
+    
+    func updateUIView(_ uiView: MyView, context: Context) {
+        
     }
 }
