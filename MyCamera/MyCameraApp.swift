@@ -11,7 +11,9 @@ import SwiftUI
 struct MyCameraApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            CameraView()
+                .environmentObject(OrientationListener.shared)
+                .environmentObject(LocationManager.shared)
         }
     }
 }
