@@ -9,53 +9,14 @@ import Foundation
 import AVFoundation
 import UIKit
 import SwiftUI
+import PhotosUI
 
 @MainActor struct CameraView: View {
     @StateObject var model = CameraViewModel()
-    @EnvironmentObject var orientation: OrientationListener
+    @EnvironmentObject var orientationListener: OrientationListener
     @EnvironmentObject var locationManager: LocationManager
     
-    var bottomButtonSize: CGFloat {
-        return 45
-    }
-    
-    var captureButton: some View {
-        Button(action: {
-            model.capturePhoto()
-        }, label: {
-            let buttonSiz: CGFloat = 74
-            Circle()
-                .foregroundColor(model.isCapturing ? .gray : .white)
-                .frame(width: buttonSiz, height: buttonSiz, alignment: .center)
-                .overlay(
-                    Circle()
-                        .stroke(Color.black, lineWidth: 1)
-                        .frame(width: buttonSiz - 20, height: buttonSiz - 20, alignment: .center)
-                )
-        })
-    }
-    
-    var capturedPhotoThumbnail: some View {
-        Image(uiImage: model.photo?.image ?? UIImage())
-            .resizable()
-            .aspectRatio(contentMode: .fill)
-            .frame(width: bottomButtonSize, height: bottomButtonSize)
-            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-            .rotateWithVideoOrientation(videoOrientation: orientation.videoOrientation)
-    }
-    
-    var flipCameraButton: some View {
-        Button(action: {
-            model.flipCamera()
-        }, label: {
-            Circle()
-                .foregroundColor(Color.gray.opacity(0.2))
-                .frame(width: bottomButtonSize, height: bottomButtonSize, alignment: .center)
-                .overlay(
-                    Image(systemName: "camera.rotate.fill")
-                        .foregroundColor(.white))
-        })
-    }
+    @State var pickerSelectedItems: [PhotosPickerItem] = []
     
     var body: some View {
         GeometryReader { reader in
@@ -73,7 +34,7 @@ import SwiftUI
                                 .font(.system(size: 20, weight: .medium, design: .default))
                         }
                         .accentColor(model.isFlashOn ? .yellow : .white)
-                        .rotateWithVideoOrientation(videoOrientation: orientation.videoOrientation)
+                        .rotateWithVideoOrientation(videoOrientation: orientationListener.videoOrientation)
                         
                         Button {
                             switch model.rawOption {
@@ -91,14 +52,14 @@ import SwiftUI
                             case .rawOnly:
                                 Text("RAW")
                             case .rawAndJpeg:
-                                Text("RAW & JPEG")
+                                Text("RAW+J")
                             }
                         }
                         .font(.system(size: 10))
                         .foregroundColor(.white)
                         .padding(5)
                         .border(.white, width: 1)
-                        .rotateWithVideoOrientation(videoOrientation: orientation.videoOrientation)
+                        .rotateWithVideoOrientation(videoOrientation: orientationListener.videoOrientation)
                     }
                     .padding(.horizontal, 20)
                     
@@ -116,29 +77,107 @@ import SwiftUI
                         if model.isCapturing {
                             Color(.black).opacity(0.5)
                         }
-                        TouchView { point in
-                            // touch Auto focus
-                            print("PointOfInterest", point)
-                            model.focus(pointOfInterest: point)
+                        
+                        Group {
+                            Color.white.frame(width: 1, height: 20)
+                            Color.white.frame(width: 20, height: 1)
                         }
-                        .padding(10)
+                        
+//                        TouchView { point, size in
+//                            calculateFocusPoint(point, in: size)
+//                        }
+                    }
+                    .padding(.vertical, 10)
+                    .onTapGesture {
+                        model.focus(pointOfInterest: .init(x: 0.5, y: 0.5))
                     }
                     
                     HStack {
-                        capturedPhotoThumbnail
+                        Button {
+//                            model.flipCamera()
+                        } label: {
+                            if let img = model.photo?.image  {
+                                PhotosPicker(selection: $pickerSelectedItems, maxSelectionCount: 0, selectionBehavior: .default, matching: nil, preferredItemEncoding: .automatic) {
+                                    Image(uiImage: img)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 45, height: 45)
+                                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                                        .rotateWithVideoOrientation(videoOrientation: orientationListener.videoOrientation)
+                                }
+                            } else {
+                                Rectangle().fill(.clear).frame(width: 45, height: 45)
+                            }
+                        }
+                        
                         Spacer()
-                        captureButton
+                        
+                        Button(action: {
+                            model.capturePhoto()
+                        }, label: {
+                            let buttonSiz: CGFloat = 74
+                            Circle()
+                                .foregroundColor(model.isCapturing ? .gray : .white)
+                                .frame(width: buttonSiz, height: buttonSiz, alignment: .center)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.black, lineWidth: 1)
+                                        .frame(width: buttonSiz - 20, height: buttonSiz - 20, alignment: .center)
+                                )
+                        })
+                        
                         Spacer()
-                        flipCameraButton
+                        
+                        ZStack {
+                            Text("EV").font(.system(size: 12))
+                                .offset(x: -24)
+                            Picker(selection: $model.exposureBias) {
+                                let evs: [Float] = [-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2].reversed()
+                                ForEach(evs, id: \.self) { ev in
+                                    Text(String(format: "%.1f", ev)).font(.system(size: 12))
+                                }
+                            } label: {
+                                Text("EV")
+                            }
+                            .pickerStyle(.wheel)
+                            .frame(width: 100, height: 100)
+                        }
+                        .frame(width: 45, height: 100)
+                        .rotateWithVideoOrientation(videoOrientation: orientationListener.videoOrientation)
+                        .offset(x: -20)
                     }
                     .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
                 }
             }
         }
         .preferredColorScheme(.dark)
         .onAppear {
-            orientation.startListen()
+            orientationListener.startListen()
         }
+    }
+    
+    func calculateFocusPoint(_ point: CGPoint, in size: CGSize) {
+        // TODO: 根据手机方向翻转point
+//        var point = point
+//        var size = size
+//        let videoOrientation = orientation.videoOrientation
+//        switch videoOrientation {
+//        case .portraitUpsideDown:
+//            point = .init(x: size.width - point.x, y: size.height - point.y)
+//        case .landscapeRight:
+//            point = .init(x: point.y, y: size.width - point.x)
+//            size = .init(width: size.height, height: size.width)
+//        case .landscapeLeft:
+//            point = .init(x: size.height - point.y, y: point.x)
+//            size = .init(width: size.height, height: size.width)
+//        default:
+//            break
+//        }
+//        let interest = CGPoint(x: point.x / size.width, y: point.y / size.height)
+//        print("PointOfInterest Rotated", interest)
+//        model.focus(pointOfInterest: interest)
+        model.focus(pointOfInterest: .init(x: 0.5, y: 0.5))
     }
 }
 
@@ -180,6 +219,10 @@ struct CameraPreview: UIViewRepresentable {
         view.videoPreviewLayer.session = session
         view.videoPreviewLayer.connection?.videoOrientation = .portrait
         view.contentMode = .scaleAspectFill
+#if targetEnvironment(simulator)
+        view.layer.borderColor = UIColor.gray.cgColor
+        view.layer.borderWidth = 1
+#endif
         return view
     }
     
@@ -189,7 +232,7 @@ struct CameraPreview: UIViewRepresentable {
 }
 
 struct TouchView: UIViewRepresentable {
-    typealias TouchHandler = (CGPoint) -> Void
+    typealias TouchHandler = (CGPoint, CGSize) -> Void
     
     class MyView: UIView {
         let touchHander: TouchHandler
@@ -206,8 +249,10 @@ struct TouchView: UIViewRepresentable {
         
         @objc func tapGestureRecognizer(sender: UITapGestureRecognizer) {
             let p = sender.location(in: self)
-            let size = bounds.size
-            touchHander(.init(x: p.x / size.width, y: p.y / size.height))
+            guard bounds.contains(p) else {
+                return
+            }
+            touchHander(p, bounds.size)
         }
     }
     

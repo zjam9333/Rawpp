@@ -23,6 +23,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate, ObservableObject {
     
     private func startLoading() {
 //        manager.requestAlwaysAuthorization()
+//        manager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "AbcdefgKey")
 //        manager.startUpdatingLocation()
     }
     

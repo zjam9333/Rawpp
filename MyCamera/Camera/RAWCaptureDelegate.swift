@@ -74,8 +74,17 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             guard let rawData = rawData else {
                 return
             }
-            let rawFilter = CIRAWFilter(imageData: rawData)
-            guard let ciimg = rawFilter?.outputImage else {
+            guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: "rawd") else {
+                return
+            }
+            rawFilter.boostAmount = 0.5
+            if rawFilter.isColorNoiseReductionSupported {
+                rawFilter.colorNoiseReductionAmount = 0.2
+            }
+            if rawFilter.isLuminanceNoiseReductionSupported {
+                rawFilter.luminanceNoiseReductionAmount = 0.2
+            }
+            guard let ciimg = rawFilter.outputImage else {
                 return
             }
             ciimg.settingProperties(photo.metadata)

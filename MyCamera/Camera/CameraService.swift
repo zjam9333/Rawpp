@@ -135,6 +135,12 @@ class CameraService {
         }
     }
     
+    func orientationChanged(orientation: AVCaptureVideoOrientation) {
+        if let photoOutputConnection = photoOutput.connection(with: .video), photoOutputConnection.isVideoOrientationSupported {
+            photoOutputConnection.videoOrientation = orientation
+        }
+    }
+    
     func focus(pointOfInterest: CGPoint) {
         guard let device = videoDeviceInput?.device, device.isFocusPointOfInterestSupported else {
             return
@@ -151,13 +157,30 @@ class CameraService {
         }
     }
     
+    func setExposureBias(_ bias: Float) {
+        guard let device = videoDeviceInput?.device else {
+            return
+        }
+        let min = device.minExposureTargetBias
+        let max = device.maxExposureTargetBias
+        print("exposureTargetBias:" , min, max)
+        guard min < bias, bias < max else {
+            return
+        }
+        Task {
+            do {
+                try device.lockForConfiguration()
+                await device.setExposureTargetBias(bias)
+                device.unlockForConfiguration()
+            } catch {
+                
+            }
+        }
+    }
+    
     func capturePhoto(rawOption: RAWSaveOption) {
         guard setupResult != .configurationFailed else {
             return
-        }
-        
-        if let photoOutputConnection = photoOutput.connection(with: .video), photoOutputConnection.isVideoOrientationSupported {
-            photoOutputConnection.videoOrientation = OrientationListener.shared.videoOrientation
         }
         
         guard let photoOutputConnection = photoOutput.connection(with: .video), photoOutputConnection.isActive, photoOutputConnection.isEnabled else {
@@ -167,9 +190,9 @@ class CameraService {
         }
         
         let rawFormat = photoOutput.availableRawPhotoPixelFormatTypes.first { code in
-            if photoOutput.isAppleProRAWEnabled {
-                return AVCapturePhotoOutput.isAppleProRAWPixelFormat(code)
-            }
+//            if photoOutput.isAppleProRAWEnabled {
+//                return AVCapturePhotoOutput.isAppleProRAWPixelFormat(code)
+//            }
             return AVCapturePhotoOutput.isBayerRAWPixelFormat(code)
         }
         

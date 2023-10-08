@@ -22,6 +22,8 @@ import AVFoundation
         }
     }
     
+    @Published var exposureBias: Float = 0
+    
     private static var cachedRawOption: RAWSaveOption {
         get {
             guard let value = UserDefaults.standard.value(forKey: "CameraViewModelCachedRawOption") as? Int else {
@@ -67,6 +69,14 @@ import AVFoundation
             self?.isCapturing = ca
         }
         .store(in: &self.subscriptions)
+        
+        $exposureBias.receive(on: DispatchQueue.global()).sink { [weak self] bias in
+            self?.service.setExposureBias(bias)
+        }.store(in: &self.subscriptions)
+        
+        OrientationListener.shared.$videoOrientation.receive(on: DispatchQueue.global()).sink { [weak self] ori in
+            self?.service.orientationChanged(orientation: ori)
+        }.store(in: &self.subscriptions)
     }
     
     func configure() {
@@ -100,4 +110,5 @@ import AVFoundation
             service.focus(pointOfInterest: pointOfInterest)
         }
     }
+    
 }
