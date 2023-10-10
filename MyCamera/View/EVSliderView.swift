@@ -20,14 +20,13 @@ struct EVSliderView: View {
         let drag = DragGesture()
             .onChanged { value in
                 let currentOffSet = value.location.x - value.startLocation.x
-                if (currentOffSet - lastInitOffset > 10) {
-                    lastInitOffset += 10
-                    print(lastInitOffset)
-                    increaseEV()
-                } else if (currentOffSet - lastInitOffset <= -10) {
-                    lastInitOffset -= 10
-                    print(lastInitOffset)
-                    decreaseEV()
+                let thres: CGFloat = 8
+                if (currentOffSet - lastInitOffset > thres) {
+                    lastInitOffset += thres
+                    increaseEV(step: 1)
+                } else if (currentOffSet - lastInitOffset <= -thres) {
+                    lastInitOffset -= thres
+                    increaseEV(step: -1)
                 }
             }
             .onEnded{ v in
@@ -40,55 +39,39 @@ struct EVSliderView: View {
                     let isSelected = value == ev
                     let isInteger = integerValues.contains(ev)
                     Rectangle()
-                        .fill(isSelected ? Color.yellow : Color.white)
+                        .fill(isSelected ? Color.yellow : Color.white.opacity(0.8))
                         .frame(width: isSelected ? 2 : 1, height: isInteger ? 12 : 8)
+                        .animation(.default, value: value)
                 }
             }
         }
         .gesture(drag)
     }
     
-    func increaseEV() {
-        print("increaseEV")
+    func increaseEV(step: Int) {
         guard let index = evs.firstIndex(of: value) else {
-            print("ev index not found")
+            value = 0
             return
         }
-        let next = index + 1
+        let next = index + step
         print("ev index found", index, "next", next, "total", evs.count)
-        if next < evs.count {
+        if evs.indices.contains(next) {
             value = evs[next]
-        }
-        print("value", value)
-    }
-    
-    func decreaseEV() {
-        print("decreaseEV")
-        guard let index = evs.firstIndex(of: value) else {
-            print("ev index not found")
-            return
-        }
-        let prev = index - 1
-        print("ev index found", index, "prev", prev, "total", evs.count)
-        if prev >= 0 {
-            value = evs[prev]
         }
         print("value", value)
     }
 }
 
 struct EVSliderViewPreview: PreviewProvider {
-    
+    static var value: Float = 0
     static var previews: some View {
-        return _EVSliderViewPreviewV()
+        let bindingFloat = Binding<Float> {
+            return value
+        } set: { v in
+            value = v
+        }
+        return EVSliderView(value: bindingFloat)
             .frame(width: 100, height: 100)
             .background(Color.black, ignoresSafeAreaEdges: .all)
-    }
-}
-
-private struct _EVSliderViewPreviewV: View {
-    @State var value: Float = 0
-    var body: some View {
-        EVSliderView(value: $value)
     }
 }

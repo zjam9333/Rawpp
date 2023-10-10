@@ -12,8 +12,6 @@ struct MyCameraApp: App {
     var body: some Scene {
         WindowGroup {
             CameraView()
-                .environmentObject(OrientationListener.shared)
-                .environmentObject(LocationManager.shared)
         }
     }
 }

@@ -24,6 +24,9 @@ import AVFoundation
     
     @Published var exposureBias: Float = 0
     
+    let orientationListener: OrientationListener = .shared
+    let locationManager: LocationManager = .shared
+    
     private static var cachedRawOption: RAWSaveOption {
         get {
             guard let value = UserDefaults.standard.value(forKey: "CameraViewModelCachedRawOption") as? Int else {

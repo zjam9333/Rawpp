@@ -12,11 +12,7 @@ import SwiftUI
 import PhotosUI
 
 @MainActor struct CameraView: View {
-    @StateObject var model = CameraViewModel()
-    @EnvironmentObject var orientationListener: OrientationListener
-    @EnvironmentObject var locationManager: LocationManager
-    
-    @State var pickerSelectedItems: [PhotosPickerItem] = []
+    @StateObject var viewModel = CameraViewModel()
     
     var body: some View {
         GeometryReader { reader in
@@ -24,30 +20,28 @@ import PhotosUI
                 Color.black.edgesIgnoringSafeArea(.all)
                 
                 VStack {
-                    
-//                    Text("\(orientation.videoOrientation)" + "")
                     HStack(spacing: 20) {
                         Button {
-                            model.switchFlash()
+                            viewModel.switchFlash()
                         } label: {
-                            Image(systemName: model.isFlashOn ? "bolt.fill" : "bolt.slash.fill")
+                            Image(systemName: viewModel.isFlashOn ? "bolt.fill" : "bolt.slash.fill")
                                 .font(.system(size: 20, weight: .medium, design: .default))
                         }
-                        .accentColor(model.isFlashOn ? .yellow : .white)
-                        .rotateWithVideoOrientation(videoOrientation: orientationListener.videoOrientation)
+                        .accentColor(viewModel.isFlashOn ? .yellow : .white)
+                        .rotateWithVideoOrientation(videoOrientation: viewModel.orientationListener.videoOrientation)
                         Spacer()
                         
                         Button {
-                            switch model.rawOption {
+                            switch viewModel.rawOption {
                             case .jpegOnly:
-                                model.rawOption = .rawOnly
+                                viewModel.rawOption = .rawOnly
                             case .rawOnly:
-                                model.rawOption = .rawAndJpeg
+                                viewModel.rawOption = .rawAndJpeg
                             case .rawAndJpeg:
-                                model.rawOption = .jpegOnly
+                                viewModel.rawOption = .jpegOnly
                             }
                         } label: {
-                            switch model.rawOption {
+                            switch viewModel.rawOption {
                             case .jpegOnly:
                                 Text("JPEG")
                             case .rawOnly:
@@ -60,7 +54,7 @@ import PhotosUI
                         .foregroundColor(.white)
                         .padding(5)
                         .border(.white, width: 1)
-                        .rotateWithVideoOrientation(videoOrientation: orientationListener.videoOrientation)
+                        .rotateWithVideoOrientation(videoOrientation: viewModel.orientationListener.videoOrientation)
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
@@ -68,17 +62,17 @@ import PhotosUI
 //                    Spacer()
                     
                     ZStack {
-                        CameraVideoLayerPreview(session: model.session)
+                        CameraVideoLayerPreview(session: viewModel.session)
                             .onAppear {
-                                model.configure()
+                                viewModel.configure()
                             }
-                            .alert(isPresented: $model.showAlertError) {
-                                Alert(title: Text(model.alertError.title), message: Text(model.alertError.message), primaryButton: .default(Text(model.alertError.primaryButtonTitle), action: {
-                                    model.alertError.primaryAction?()
+                            .alert(isPresented: $viewModel.showAlertError) {
+                                Alert(title: Text(viewModel.alertError.title), message: Text(viewModel.alertError.message), primaryButton: .default(Text(viewModel.alertError.primaryButtonTitle), action: {
+                                    viewModel.alertError.primaryAction?()
                                 }), secondaryButton: .cancel())
                             }
 //                            .scaleEffect(x: 0.2, y: 0.2)
-                        if model.isCapturing {
+                        if viewModel.isCapturing {
                             Color(.black).opacity(0.5)
                         }
                         
@@ -88,38 +82,37 @@ import PhotosUI
                         }
                     }
                     .onTapGesture {
-                        model.focus(pointOfInterest: .init(x: 0.5, y: 0.5))
+                        viewModel.focus(pointOfInterest: .init(x: 0.5, y: 0.5))
                     }
                     .aspectRatio(3 / 4, contentMode: .fit)
                     
 //                    Spacer()
                     
                     ZStack {
-                        Group {
-                            if let img = model.photo?.image  {
-                                PhotosPicker(selection: $pickerSelectedItems, maxSelectionCount: 0, selectionBehavior: .default, matching: nil, preferredItemEncoding: .automatic) {
-                                    Image(uiImage: img)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 45, height: 45)
-                                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                                        .rotateWithVideoOrientation(videoOrientation: orientationListener.videoOrientation)
-                                }
+                        PhotosPicker(selection: .constant([]), maxSelectionCount: 0, selectionBehavior: .default, matching: nil, preferredItemEncoding: .automatic) {
+                            if let img = viewModel.photo?.image {
+                                Image(uiImage: img)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 74, height: 74)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                                    .rotateWithVideoOrientation(videoOrientation: viewModel.orientationListener.videoOrientation)
                             } else {
                                 Rectangle()
                                     .fill(.gray)
                                     .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                                    .frame(width: 45, height: 45)
+                                    .frame(width: 74, height: 74)
                             }
-                        }.offset(x: -120)
+                        }
+                        .offset(x: -120)
                         
                         Button {
-                            model.capturePhoto()
+                            viewModel.capturePhoto()
                         } label: {
                             let buttonSiz: CGFloat = 74
                             let circleSiz = buttonSiz - 36
                             Circle()
-                                .foregroundColor(model.isCapturing ? .gray : .white)
+                                .foregroundColor(viewModel.isCapturing ? .gray : .white)
                                 .frame(width: buttonSiz, height: buttonSiz, alignment: .center)
                                 .overlay(
                                     Circle()
@@ -129,14 +122,10 @@ import PhotosUI
                         }
                         
                         ZStack {
-                            EVSliderView(value: .init(get: {
-                                return model.exposureBias
-                            }, set: { v in
-                                model.exposureBias = v
-                            }))
+                            EVSliderView(value: $viewModel.exposureBias)
                         }
                         .frame(width: 100, height: 100)
-                        .rotateWithVideoOrientation(videoOrientation: orientationListener.videoOrientation)
+                        .rotateWithVideoOrientation(videoOrientation: viewModel.orientationListener.videoOrientation)
                         .offset(x: 120)
                     }
                     .padding(.horizontal, 20)
@@ -146,7 +135,7 @@ import PhotosUI
         }
         .preferredColorScheme(.dark)
         .onAppear {
-            orientationListener.startListen()
+            viewModel.orientationListener.startListen()
         }
     }
 }
@@ -187,7 +176,5 @@ struct CameraViewPreview: PreviewProvider {
     static var previews: some View {
         return CameraView()
             .border(.white, width: 1)
-            .environmentObject(OrientationListener.shared)
-            .environmentObject(LocationManager.shared)
     }
 }
