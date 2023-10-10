@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1C28C4F92AD4EB0C00D99C55 /* EVSliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C28C4F82AD4EB0C00D99C55 /* EVSliderView.swift */; };
+		1C28C4FB2AD4EB2000D99C55 /* ViewExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C28C4FA2AD4EB2000D99C55 /* ViewExtension.swift */; };
 		1CA2AFF22AB409B3004EA5D3 /* OrientationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CA2AFF12AB409B3004EA5D3 /* OrientationManager.swift */; };
 		1CA2B0312AB822B9004EA5D3 /* RAWCaptureDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CA2B0302AB822B9004EA5D3 /* RAWCaptureDelegate.swift */; };
 		1CB4101426F1FA7300D8E931 /* MyCameraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB4101326F1FA7300D8E931 /* MyCameraApp.swift */; };
@@ -20,6 +22,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1C28C4F82AD4EB0C00D99C55 /* EVSliderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EVSliderView.swift; sourceTree = "<group>"; };
+		1C28C4FA2AD4EB2000D99C55 /* ViewExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExtension.swift; sourceTree = "<group>"; };
 		1CA2AFF12AB409B3004EA5D3 /* OrientationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationManager.swift; sourceTree = "<group>"; };
 		1CA2B0302AB822B9004EA5D3 /* RAWCaptureDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAWCaptureDelegate.swift; sourceTree = "<group>"; };
 		1CB4101026F1FA7300D8E931 /* MyCamera.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyCamera.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -45,6 +49,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1C28C4F72AD4E9B700D99C55 /* View */ = {
+			isa = PBXGroup;
+			children = (
+				1CB4102B26F2001500D8E931 /* CameraView.swift */,
+				1C28C4F82AD4EB0C00D99C55 /* EVSliderView.swift */,
+				1C28C4FA2AD4EB2000D99C55 /* ViewExtension.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
 		1CB4100726F1FA7300D8E931 = {
 			isa = PBXGroup;
 			children = (
@@ -64,6 +78,7 @@
 		1CB4101226F1FA7300D8E931 /* MyCamera */ = {
 			isa = PBXGroup;
 			children = (
+				1C28C4F72AD4E9B700D99C55 /* View */,
 				1CB4102226F1FC6700D8E931 /* Camera */,
 				1CB4101326F1FA7300D8E931 /* MyCameraApp.swift */,
 				1CB4101726F1FA7500D8E931 /* Assets.xcassets */,
@@ -85,7 +100,6 @@
 			isa = PBXGroup;
 			children = (
 				1CB4102326F1FC7500D8E931 /* CameraService.swift */,
-				1CB4102B26F2001500D8E931 /* CameraView.swift */,
 				1CB4102726F1FD8A00D8E931 /* CameraViewModel.swift */,
 				1CBCD2D126F3504F0042A5B7 /* LocationManager.swift */,
 				1CA2AFF12AB409B3004EA5D3 /* OrientationManager.swift */,
@@ -167,6 +181,8 @@
 				1CB4102A26F1FDA900D8E931 /* Photos.swift in Sources */,
 				1CB4102C26F2001500D8E931 /* CameraView.swift in Sources */,
 				1CB4101426F1FA7300D8E931 /* MyCameraApp.swift in Sources */,
+				1C28C4F92AD4EB0C00D99C55 /* EVSliderView.swift in Sources */,
+				1C28C4FB2AD4EB2000D99C55 /* ViewExtension.swift in Sources */,
 				1CBCD2D226F3504F0042A5B7 /* LocationManager.swift in Sources */,
 				1CB4102426F1FC7500D8E931 /* CameraService.swift in Sources */,
 				1CB4102826F1FD8A00D8E931 /* CameraViewModel.swift in Sources */,
