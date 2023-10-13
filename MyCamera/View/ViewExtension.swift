@@ -9,7 +9,7 @@ import SwiftUI
 import AVFoundation
 
 extension View {
-    @ViewBuilder func rotateWithVideoOrientation(videoOrientation: AVCaptureVideoOrientation) -> some View {
+    func rotateWithVideoOrientation(videoOrientation: AVCaptureVideoOrientation) -> some View {
         var degree: Angle {
             switch videoOrientation {
             case .portraitUpsideDown:
@@ -22,6 +22,6 @@ extension View {
                 return .zero
             }
         }
-        rotationEffect(degree).animation(.default, value: videoOrientation)
+        return rotationEffect(degree).animation(.default, value: videoOrientation)
     }
 }

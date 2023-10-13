@@ -9,10 +9,15 @@ import Foundation
 import AVFoundation
 import UIKit
 import SwiftUI
-import PhotosUI
 
 @MainActor struct CameraView: View {
     @StateObject var viewModel = CameraViewModel()
+    
+    class EVOffsetCache {
+        var lastInitOffset: CGFloat = 0
+        let evs = EVValue.presetEVs
+    }
+    let evOffsetCache = EVOffsetCache()
     
     var body: some View {
         GeometryReader { reader in
@@ -20,46 +25,48 @@ import PhotosUI
                 Color.black.edgesIgnoringSafeArea(.all)
                 
                 VStack {
-                    HStack(spacing: 20) {
-                        Button {
-                            viewModel.switchFlash()
-                        } label: {
-                            Image(systemName: viewModel.isFlashOn ? "bolt.fill" : "bolt.slash.fill")
-                                .font(.system(size: 20, weight: .medium, design: .default))
+                    ZStack {
+                        HStack(spacing: 20) {
+                            Button {
+                                viewModel.switchFlash()
+                            } label: {
+                                Image(systemName: viewModel.isFlashOn ? "bolt.fill" : "bolt.slash.fill")
+                                    .font(.system(size: 20, weight: .medium, design: .default))
+                            }
+                            .accentColor(viewModel.isFlashOn ? .yellow : .white)
+                            .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
+                            Spacer()
+                            
+                            Button {
+                                switch viewModel.rawOption {
+                                case .heif:
+                                    viewModel.rawOption = .raw
+                                case .raw:
+                                    viewModel.rawOption = .rawAndHeif
+                                case .rawAndHeif:
+                                    viewModel.rawOption = .heif
+                                }
+                            } label: {
+                                switch viewModel.rawOption {
+                                case .heif:
+                                    Text("HEIF")
+                                case .raw:
+                                    Text("RAW")
+                                case .rawAndHeif:
+                                    Text("RAW+H")
+                                }
+                            }
+                            .font(.system(size: 10))
+                            .foregroundColor(.white)
+                            .padding(5)
+                            .border(.white, width: 1)
                         }
-                        .accentColor(viewModel.isFlashOn ? .yellow : .white)
-                        .rotateWithVideoOrientation(videoOrientation: viewModel.orientationListener.videoOrientation)
-                        Spacer()
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
                         
-                        Button {
-                            switch viewModel.rawOption {
-                            case .jpegOnly:
-                                viewModel.rawOption = .rawOnly
-                            case .rawOnly:
-                                viewModel.rawOption = .rawAndJpeg
-                            case .rawAndJpeg:
-                                viewModel.rawOption = .jpegOnly
-                            }
-                        } label: {
-                            switch viewModel.rawOption {
-                            case .jpegOnly:
-                                Text("JPEG")
-                            case .rawOnly:
-                                Text("RAW")
-                            case .rawAndJpeg:
-                                Text("RAW+J")
-                            }
-                        }
-                        .font(.system(size: 10))
-                        .foregroundColor(.white)
-                        .padding(5)
-                        .border(.white, width: 1)
-                        .rotateWithVideoOrientation(videoOrientation: viewModel.orientationListener.videoOrientation)
+                        EVSliderView(value: $viewModel.exposureBias, evs: EVValue.presetEVs)
+                            .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    
-//                    Spacer()
                     
                     ZStack {
                         CameraVideoLayerPreview(session: viewModel.session)
@@ -80,31 +87,75 @@ import PhotosUI
                             Color.white.frame(width: 1, height: 20)
                             Color.white.frame(width: 20, height: 1)
                         }
-                    }
-                    .onTapGesture {
-                        viewModel.focus(pointOfInterest: .init(x: 0.5, y: 0.5))
+                        
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 2) {
+                                viewModel.exposureBias = .zero
+                            }
+                            .onTapGesture {
+                                viewModel.focus(pointOfInterest: .init(x: 0.5, y: 0.5))
+                            }
+                            .gesture(
+                                DragGesture()
+                                    .onChanged { value in
+                                        let currentOffSet = -(value.location.y - value.startLocation.y)
+                                        let thres: CGFloat = 16
+                                        if (currentOffSet - evOffsetCache.lastInitOffset > thres) {
+                                            evOffsetCache.lastInitOffset += thres
+                                            increaseEV(step: 1)
+                                        } else if (currentOffSet - evOffsetCache.lastInitOffset <= -thres) {
+                                            evOffsetCache.lastInitOffset -= thres
+                                            increaseEV(step: -1)
+                                        }
+                                    }
+                                    .onEnded{ v in
+                                        evOffsetCache.lastInitOffset = 0
+                                    }
+                            )
+                            .gesture(
+                                MagnificationGesture()
+                                    .onEnded { amount in
+                                        viewModel.changeCamera(step: amount > 1 ? 1 : -1)
+                                    }
+                            )
+                            .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
                     }
                     .aspectRatio(3 / 4, contentMode: .fit)
-                    
-//                    Spacer()
+                    .overlay(alignment: .bottomTrailing) {
+                        Text("cameraLens: \(viewModel.cameraLens.rawValue) \(viewModel.cameraPosition.rawValue)")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(.black.opacity(0.5))
+                    }
                     
                     ZStack {
-                        PhotosPicker(selection: .constant([]), maxSelectionCount: 0, selectionBehavior: .default, matching: nil, preferredItemEncoding: .automatic) {
-                            if let img = viewModel.photo?.image {
-                                Image(uiImage: img)
+                        HStack {
+                            if let data = viewModel.photo?.data, let img = UIImage(data: data) {
+                                Button {
+                                    viewModel.showPhoto = true
+                                } label: {
+                                    Image(uiImage: img)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 74, height: 74)
+                                        .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            Button {
+                                viewModel.toggleFrontCamera()
+                            } label: {
+                                Image(systemName: "arrow.triangle.2.circlepath.camera")
                                     .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: 74, height: 74)
-                                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                                    .rotateWithVideoOrientation(videoOrientation: viewModel.orientationListener.videoOrientation)
-                            } else {
-                                Rectangle()
-                                    .fill(.gray)
-                                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                                    .frame(width: 74, height: 74)
+                                    .foregroundColor(.white)
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 40, height: 40, alignment: .center)
                             }
                         }
-                        .offset(x: -120)
                         
                         Button {
                             viewModel.capturePhoto()
@@ -121,12 +172,6 @@ import PhotosUI
                                 )
                         }
                         
-                        ZStack {
-                            EVSliderView(value: $viewModel.exposureBias)
-                        }
-                        .frame(width: 100, height: 100)
-                        .rotateWithVideoOrientation(videoOrientation: viewModel.orientationListener.videoOrientation)
-                        .offset(x: 120)
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
@@ -134,9 +179,29 @@ import PhotosUI
             }
         }
         .preferredColorScheme(.dark)
-        .onAppear {
-            viewModel.orientationListener.startListen()
+        .sheet(isPresented: $viewModel.showPhoto) {
+            if let data = viewModel.photo?.data, let img = UIImage(data: data) {
+                Image(uiImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                EmptyView()
+            }
         }
+    }
+    
+    private func increaseEV(step: Int) {
+        let evs = evOffsetCache.evs
+        guard let index = evs.firstIndex(of: viewModel.exposureBias) else {
+            viewModel.exposureBias = .zero
+            return
+        }
+        let next = index + step
+        print("ev index found", index, "next", next, "total", evs.count)
+        if evs.indices.contains(next) {
+            viewModel.exposureBias = evs[next]
+        }
+        print("value", viewModel.exposureBias)
     }
 }
 

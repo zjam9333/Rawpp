@@ -9,13 +9,13 @@ import AVFoundation
 import Photos
 
 enum RAWSaveOption: Int {
-    case rawOnly
-    case jpegOnly
-    case rawAndJpeg
+    case raw
+    case heif
+    case rawAndHeif
     
     var saveRAW: Bool {
         switch self {
-        case .rawOnly, .rawAndJpeg:
+        case .raw, .rawAndHeif:
             return true
         default:
             return false
@@ -24,7 +24,7 @@ enum RAWSaveOption: Int {
     
     var saveJpeg: Bool {
         switch self {
-        case .jpegOnly, .rawAndJpeg:
+        case .heif, .rawAndHeif:
             return true
         default:
             return false
@@ -46,6 +46,11 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     
     var didFinish: ((Photo?) -> Void)?
     
+    func photoOutput(_ output: AVCapturePhotoOutput, willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings) {
+        // dispose system shutter sound
+        AudioServicesDisposeSystemSoundID(1108)
+    }
+    
     // Store the RAW file and compressed photo data until the capture finishes.
     func photoOutput(_ output: AVCapturePhotoOutput,
                      didFinishProcessingPhoto photo: AVCapturePhoto,
@@ -62,19 +67,8 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
                 return
             }
             rawData = photoData
-        } else {
-            defer {
-                if compressedData == nil {
-                    // compressed的另一个data
-                    // 锐化过度的版本
-                    compressedData = photo.fileDataRepresentation()
-                }
-            }
             // 优先使用raw转的jpeg data，避免苹果默认的处理
-            guard let rawData = rawData else {
-                return
-            }
-            guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: "rawd") else {
+            guard let rawFilter = CIRAWFilter(imageData: photoData, identifierHint: "raw") else {
                 return
             }
             rawFilter.boostAmount = 0.5
@@ -88,8 +82,14 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
                 return
             }
             ciimg.settingProperties(photo.metadata)
-            let option = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): 0.6]
+            let option = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): 0.5]
             compressedData = CIContext().heifRepresentation(of: ciimg, format: .BGRA8, colorSpace: CGColorSpace(name: CGColorSpace.displayP3)!, options: option)
+        } else {
+            if compressedData == nil {
+                // compressed的另一个data
+                // 锐化过度的版本
+                compressedData = photo.fileDataRepresentation()
+            }
         }
     }
     
@@ -98,8 +98,8 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         
         // Call the "finished" closure, if you set it.
         defer {
-            if let compressedData = compressedData {
-                didFinish?(Photo(originalData: compressedData))
+            if let photoData = compressedData ?? rawData {
+                didFinish?(Photo(data: photoData))
             } else {
                 didFinish?(nil)
             }
@@ -144,6 +144,5 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
                 }
             }
         }
-        
     }
 }

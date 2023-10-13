@@ -8,6 +8,9 @@
 import Foundation
 import Combine
 import AVFoundation
+import UIKit
+import CoreMotion
+import CoreLocation
 
 @MainActor class CameraViewModel: ObservableObject {
     private let service = CameraService()
@@ -21,18 +24,21 @@ import AVFoundation
             CameraViewModel.cachedRawOption = rawOption
         }
     }
+    @Published var showPhoto: Bool = false
     
-    @Published var exposureBias: Float = 0
+    @Published var exposureBias: EVValue = .zero
     
-    let orientationListener: OrientationListener = .shared
-    let locationManager: LocationManager = .shared
+    @Published var videoOrientation: AVCaptureVideoOrientation = .portrait
+    
+    @Published var cameraPosition = AVCaptureDevice.Position.back
+    @Published var cameraLens = AVCaptureDevice.DeviceType.builtInWideAngleCamera
     
     private static var cachedRawOption: RAWSaveOption {
         get {
             guard let value = UserDefaults.standard.value(forKey: "CameraViewModelCachedRawOption") as? Int else {
-                return .jpegOnly
+                return .heif
             }
-            return RAWSaveOption(rawValue: value) ?? .jpegOnly
+            return RAWSaveOption(rawValue: value) ?? .heif
         }
         set {
             let value = newValue.rawValue
@@ -50,7 +56,58 @@ import AVFoundation
     
     private var subscriptions = Set<AnyCancellable>()
     
+#if targetEnvironment(simulator)
+    var timer: Timer?
+#else
+    private let motionManager = CMMotionManager()
+#endif
+    
     init() {
+//        manager.delegate = self
+//        manager.requestAlwaysAuthorization()
+//        manager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "AbcdefgKey")
+//        manager.startUpdatingLocation()
+        
+#if targetEnvironment(simulator)
+        timer = Timer(timeInterval: 1, repeats: true) { [weak self] t in
+            let uiori = UIDevice.current.orientation
+            switch uiori {
+            case .portrait:
+                self?.videoOrientation = .portrait
+            case .portraitUpsideDown:
+                self?.videoOrientation = .portraitUpsideDown
+                // 左右反的？
+            case .landscapeLeft:
+                self?.videoOrientation = .landscapeRight
+            case .landscapeRight:
+                self?.videoOrientation = .landscapeLeft
+            default:
+                break
+            }
+        }
+        RunLoop.main.add(timer!, forMode: .common)
+#else
+        if motionManager.isAccelerometerAvailable {
+            motionManager.accelerometerUpdateInterval = 1
+            motionManager.startAccelerometerUpdates(to: .main) { [weak self] acc, err in
+                guard let acc = acc else {
+                    return
+                }
+                let x = acc.acceleration.x
+                let y = acc.acceleration.y
+                //                print("acceleration", x, y)
+                if abs(x) > abs(y) {
+                    if abs(x) > 0.6 {
+                        self?.videoOrientation = x > 0 ? .landscapeLeft : .landscapeRight
+                    }
+                } else {
+                    if abs(y) > 0.6 {
+                        self?.videoOrientation = y > 0 ? .portraitUpsideDown : .portrait
+                    }
+                }
+            }
+        }
+        #endif
         
         service.$photo.receive(on: DispatchQueue.main).sink { [weak self] (photo) in
             guard let pic = photo else { return }
@@ -73,14 +130,25 @@ import AVFoundation
         }
         .store(in: &self.subscriptions)
         
+        service.$cameraLens.receive(on: DispatchQueue.main).sink { [weak self] ca in
+            self?.cameraLens = ca
+        }
+        .store(in: &self.subscriptions)
+        
+        service.$cameraPosition.receive(on: DispatchQueue.main).sink { [weak self] ca in
+            self?.cameraPosition = ca
+        }
+        .store(in: &self.subscriptions)
+        
         $exposureBias.receive(on: DispatchQueue.global()).sink { [weak self] bias in
-            self?.service.setExposureBias(bias)
+            self?.service.setExposureBias(bias.rawValue)
         }.store(in: &self.subscriptions)
         
-        OrientationListener.shared.$videoOrientation.receive(on: DispatchQueue.global()).sink { [weak self] ori in
+        $videoOrientation.receive(on: DispatchQueue.global()).sink { [weak self] ori in
             self?.service.orientationChanged(orientation: ori)
         }.store(in: &self.subscriptions)
     }
+    
     
     func configure() {
         DispatchQueue.global().async { [self] in
@@ -96,9 +164,19 @@ import AVFoundation
         }
     }
     
-    func flipCamera() {
+    func changeCamera(step: Int) {
+        let bia = exposureBias.rawValue
         DispatchQueue.global().async { [self] in
-            service.changeCamera()
+            service.changeCamera(step: step)
+            service.setExposureBias(bia)
+        }
+    }
+    
+    func toggleFrontCamera() {
+        let bia = exposureBias.rawValue
+        DispatchQueue.global().async { [self] in
+            service.toggleFrontCamera()
+            service.setExposureBias(bia)
         }
     }
     
@@ -113,5 +191,4 @@ import AVFoundation
             service.focus(pointOfInterest: pointOfInterest)
         }
     }
-    
 }

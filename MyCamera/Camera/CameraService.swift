@@ -18,33 +18,19 @@ class CameraService {
         case notAuthorized
     }
     
-    enum Position {
-        case front
-        case back
-        mutating func toggle() {
-            switch self {
-            case .back:
-                self = .front
-            case .front:
-                self = .back
-            }
-        }
-        
-        var avPosition: AVCaptureDevice.Position {
-            switch self {
-            case .back:
-                return .back
-            case .front:
-                return .front
-            }
-        }
-    }
+    let usingDeviceTypes: [AVCaptureDevice.DeviceType] = [.builtInUltraWideCamera, .builtInWideAngleCamera, .builtInTelephotoCamera]
+    
+    lazy var deviceDiscoveries: [AVCaptureDevice.Position: AVCaptureDevice.DiscoverySession] = [
+        .back: AVCaptureDevice.DiscoverySession(deviceTypes: usingDeviceTypes, mediaType: .video, position: .back),
+        .front: AVCaptureDevice.DiscoverySession(deviceTypes: usingDeviceTypes, mediaType: .video, position: .front)
+    ]
     
     @Published var flashMode: AVCaptureDevice.FlashMode = .off
     @Published var shouldShowAlertView = false
     @Published var willCapturePhoto = false
     @Published var photo: Photo?
-    @Published var cameraPosition = Position.back
+    @Published var cameraPosition = AVCaptureDevice.Position.back
+    @Published var cameraLens = AVCaptureDevice.DeviceType.builtInWideAngleCamera
     
     var alertError: AlertError = AlertError()
     
@@ -70,17 +56,13 @@ class CameraService {
         }
     }
     
-    private func addCameraDeviceInput(position: Position = .back) {
+    private func addCameraDeviceInput(device: AVCaptureDevice?) {
         if let old = videoDeviceInput {
             session.removeInput(old)
         }
-        if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position.avPosition) {
-            if let videoDeviceInput = try? AVCaptureDeviceInput(device: device) {
-                if session.canAddInput(videoDeviceInput) {
-                    session.addInput(videoDeviceInput)
-                    self.videoDeviceInput = videoDeviceInput
-                }
-            }
+        if let device = device, let videoDeviceInput = try? AVCaptureDeviceInput(device: device), session.canAddInput(videoDeviceInput) {
+            session.addInput(videoDeviceInput)
+            self.videoDeviceInput = videoDeviceInput
         }
         // 防抖
         if let photoOutputConnection = photoOutput.connection(with: .video), photoOutputConnection.isVideoStabilizationSupported {
@@ -88,10 +70,56 @@ class CameraService {
         }
     }
     
-    func changeCamera() {
-        cameraPosition.toggle()
+    private func firstDevice(position: AVCaptureDevice.Position, deviceType:  AVCaptureDevice.DeviceType) -> AVCaptureDevice? {
+        let device = deviceDiscoveries[position]?.devices.first { dev in
+            return dev.deviceType == deviceType
+        }
+        return device
+    }
+    
+    func changeCamera(step: Int = 1) {
         session.beginConfiguration()
-        addCameraDeviceInput(position: cameraPosition)
+        
+        func nextLen(current: AVCaptureDevice.DeviceType, step: Int) -> AVCaptureDevice.DeviceType {
+            let firIndex = usingDeviceTypes.firstIndex(of: current)
+            guard let firIndex = firIndex else {
+                return current
+            }
+            let nex = firIndex + (step > 0 ? 1 : -1)
+            if nex >= usingDeviceTypes.count {
+                return current
+            } else if nex < 0 {
+                return current
+            }
+            return usingDeviceTypes[nex]
+        }
+        let old = cameraLens
+        var nex = old
+        while true {
+            nex = nextLen(current: nex, step: step)
+            if nex == old {
+                break
+            }
+            if let device = firstDevice(position: cameraPosition, deviceType: nex) {
+                cameraLens = nex
+                addCameraDeviceInput(device: device)
+                break
+            }
+        }
+        
+        session.commitConfiguration()
+    }
+    
+    func toggleFrontCamera() {
+        session.beginConfiguration()
+        if cameraPosition == .front {
+            cameraPosition = .back
+        } else {
+            cameraPosition = .front
+        }
+        cameraLens = .builtInWideAngleCamera
+        let device = firstDevice(position: cameraPosition, deviceType: cameraLens)
+        addCameraDeviceInput(device: device)
         session.commitConfiguration()
     }
     
@@ -102,7 +130,8 @@ class CameraService {
         session.beginConfiguration()
         session.sessionPreset = .photo
         
-        addCameraDeviceInput(position: cameraPosition)
+        let device = firstDevice(position: cameraPosition, deviceType: cameraLens)
+        addCameraDeviceInput(device: device)
         
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)
@@ -124,7 +153,7 @@ class CameraService {
             if !session.isRunning {
                 session.startRunning()
             }
-        case .configurationFailed, .notAuthorized:
+        default:
             print("Application not authorized to use camera")
             DispatchQueue.main.async {
                 self.alertError = AlertError(title: "Camera Error", message: "App doesn't have access to use your camera, please update your privacy settings.", primaryButtonTitle: "Go Settings", secondaryButtonTitle: "Cancel", primaryAction: {
@@ -163,7 +192,7 @@ class CameraService {
         }
         let min = device.minExposureTargetBias
         let max = device.maxExposureTargetBias
-        print("exposureTargetBias:" , min, max)
+//        print("exposureTargetBias:" , min, max)
         guard min < bias, bias < max else {
             return
         }
@@ -199,12 +228,10 @@ class CameraService {
         let photoSettings: AVCapturePhotoSettings
         let processedFormat = [AVVideoCodecKey: AVVideoCodecType.hevc]
         
-        var rawOption = rawOption
         if let rawFormat = rawFormat {
-            photoSettings = AVCapturePhotoSettings(rawPixelFormatType: rawFormat, processedFormat: processedFormat)
+            photoSettings = AVCapturePhotoSettings(rawPixelFormatType: rawFormat)
         } else {
             photoSettings = AVCapturePhotoSettings(format: processedFormat)
-            rawOption = .jpegOnly
         }
         
 //        if let location = LocationManager.shared.location {

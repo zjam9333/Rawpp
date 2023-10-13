@@ -16,15 +16,12 @@ struct Photo: Identifiable, Equatable {
 //    The ID of the captured photo
     var id: String
 //    Data representation of the captured photo
-    var originalData: Data
+    var data: Data
     
-    init(id: String = UUID().uuidString, originalData: Data) {
+    init(id: String = UUID().uuidString, data: Data) {
         self.id = id
-        self.originalData = originalData
-        self.image = UIImage(data: originalData)
+        self.data = data
     }
-    
-    var image: UIImage?
 }
 
 struct AlertError {
