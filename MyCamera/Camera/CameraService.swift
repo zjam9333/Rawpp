@@ -80,23 +80,27 @@ class CameraService {
     func changeCamera(step: Int = 1) {
         session.beginConfiguration()
         
-        func nextLen(current: AVCaptureDevice.DeviceType, step: Int) -> AVCaptureDevice.DeviceType {
+        func nextLen(current: AVCaptureDevice.DeviceType, step: Int) -> AVCaptureDevice.DeviceType? {
             let firIndex = usingDeviceTypes.firstIndex(of: current)
             guard let firIndex = firIndex else {
-                return current
+                return nil
             }
             let nex = firIndex + (step > 0 ? 1 : -1)
             if nex >= usingDeviceTypes.count {
-                return current
+                return nil
             } else if nex < 0 {
-                return current
+                return nil
             }
             return usingDeviceTypes[nex]
         }
         let old = cameraLens
         var nex = old
         while true {
-            nex = nextLen(current: nex, step: step)
+            let tryNex = nextLen(current: nex, step: step)
+            guard let tryNex = tryNex else {
+                break
+            }
+            nex = tryNex
             if nex == old {
                 break
             }
@@ -228,10 +232,12 @@ class CameraService {
         let photoSettings: AVCapturePhotoSettings
         let processedFormat = [AVVideoCodecKey: AVVideoCodecType.hevc]
         
+        var rawOption = rawOption
         if let rawFormat = rawFormat {
             photoSettings = AVCapturePhotoSettings(rawPixelFormatType: rawFormat)
         } else {
             photoSettings = AVCapturePhotoSettings(format: processedFormat)
+            rawOption = .heif
         }
         
 //        if let location = LocationManager.shared.location {
@@ -249,10 +255,13 @@ class CameraService {
         let delegate = RAWCaptureDelegate(option: rawOption)
         inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = delegate
         
-        willCapturePhoto = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.willCapturePhoto = false
+        DispatchQueue.main.async {
+            self.willCapturePhoto = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.willCapturePhoto = false
+            }
         }
+        
         // Remove the delegate reference when it finishes its processing.
         delegate.didFinish = { [weak self] phot in
             self?.inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = nil

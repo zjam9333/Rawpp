@@ -15,9 +15,8 @@ import SwiftUI
     
     class EVOffsetCache {
         var lastInitOffset: CGFloat = 0
-        let evs = EVValue.presetEVs
     }
-    let evOffsetCache = EVOffsetCache()
+    private let evOffsetCache = EVOffsetCache()
     
     var body: some View {
         GeometryReader { reader in
@@ -60,33 +59,45 @@ import SwiftUI
                             .foregroundColor(.white)
                             .padding(5)
                             .border(.white, width: 1)
+                            .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 10)
                         
-                        EVSliderView(value: $viewModel.exposureBias, evs: EVValue.presetEVs)
+                        Text(String(format: "EV %.1f", viewModel.exposureBias.rawValue)).font(.system(size: 12)).foregroundColor(.white)
                             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
                     }
                     
                     ZStack {
                         CameraVideoLayerPreview(session: viewModel.session)
-                            .onAppear {
-                                viewModel.configure()
-                            }
-                            .alert(isPresented: $viewModel.showAlertError) {
-                                Alert(title: Text(viewModel.alertError.title), message: Text(viewModel.alertError.message), primaryButton: .default(Text(viewModel.alertError.primaryButtonTitle), action: {
-                                    viewModel.alertError.primaryAction?()
-                                }), secondaryButton: .cancel())
-                            }
 //                            .scaleEffect(x: 0.2, y: 0.2)
+                        
                         if viewModel.isCapturing {
                             Color(.black).opacity(0.5)
                         }
                         
                         Group {
-                            Color.white.frame(width: 1, height: 20)
-                            Color.white.frame(width: 20, height: 1)
+                            Group {
+                                Color.white.frame(width: 1, height: 20)
+                                Color.white.frame(width: 20, height: 1)
+                            }
+                            .opacity(!viewModel.showingEVIndicators ? 1 : 0)
+                            
+                            HStack(alignment: .bottom, spacing: 2) {
+                                ForEach(EVValue.presetEVs, id: \.self) { ev in
+                                    let isSelected = viewModel.exposureBias == ev
+                                    let isInteger = EVValue.integerValues.contains(ev)
+                                    Rectangle()
+                                        .fill(isSelected ? Color.yellow : Color.white.opacity(0.8))
+                                        .frame(width: isSelected ? 2 : 1, height: isInteger ? 12 : 8)
+                                        .animation(.default, value: viewModel.exposureBias)
+                                }
+                            }
+                            .rotationEffect(.degrees(-90))
+                            .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
+                            .opacity(viewModel.showingEVIndicators ? 1 : 0)
                         }
+                        .animation(.default, value: viewModel.showingEVIndicators)
                         
                         Color.clear
                             .contentShape(Rectangle())
@@ -99,6 +110,7 @@ import SwiftUI
                             .gesture(
                                 DragGesture()
                                     .onChanged { value in
+                                        viewModel.showingEVIndicators = true
                                         let currentOffSet = -(value.location.y - value.startLocation.y)
                                         let thres: CGFloat = 16
                                         if (currentOffSet - evOffsetCache.lastInitOffset > thres) {
@@ -111,6 +123,7 @@ import SwiftUI
                                     }
                                     .onEnded{ v in
                                         evOffsetCache.lastInitOffset = 0
+                                        viewModel.showingEVIndicators = false
                                     }
                             )
                             .gesture(
@@ -120,14 +133,38 @@ import SwiftUI
                                     }
                             )
                             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
+                        
                     }
                     .aspectRatio(3 / 4, contentMode: .fit)
                     .overlay(alignment: .bottomTrailing) {
-                        Text("cameraLens: \(viewModel.cameraLens.rawValue) \(viewModel.cameraPosition.rawValue)")
+                        let cameraLens: String = {
+                            switch (viewModel.cameraLens) {
+                            case .builtInWideAngleCamera:
+                                return "WideAngle"
+                            case .builtInUltraWideCamera:
+                                return "UltraWide"
+                            case .builtInTelephotoCamera:
+                                return "Telephoto"
+                            default:
+                                return viewModel.cameraLens.rawValue
+                            }
+                        }()
+                        let cameraPosition: String = {
+                            switch (viewModel.cameraPosition) {
+                            case .back:
+                                return "Back"
+                            case .front:
+                                return "Front"
+                            default:
+                                return "Unknown"
+                            }
+                        }()
+                        Text("\(cameraLens) \(cameraPosition)")
                             .font(.system(size: 12))
                             .foregroundColor(.white)
                             .padding(10)
                             .background(.black.opacity(0.5))
+                            .offset(x: -1, y: -1)
                     }
                     
                     ZStack {
@@ -149,11 +186,13 @@ import SwiftUI
                             Button {
                                 viewModel.toggleFrontCamera()
                             } label: {
-                                Image(systemName: "arrow.triangle.2.circlepath.camera")
+                                Image(systemName: "arrow.triangle.2.circlepath")
                                     .resizable()
                                     .foregroundColor(.white)
                                     .aspectRatio(contentMode: .fit)
                                     .frame(width: 40, height: 40, alignment: .center)
+                                    .padding()
+                                    .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
                             }
                         }
                         
@@ -188,10 +227,18 @@ import SwiftUI
                 EmptyView()
             }
         }
+        .onAppear {
+            viewModel.configure()
+        }
+        .alert(isPresented: $viewModel.showAlertError) {
+            Alert(title: Text(viewModel.alertError.title), message: Text(viewModel.alertError.message), primaryButton: .default(Text(viewModel.alertError.primaryButtonTitle), action: {
+                viewModel.alertError.primaryAction?()
+            }), secondaryButton: .cancel())
+        }
     }
     
     private func increaseEV(step: Int) {
-        let evs = evOffsetCache.evs
+        let evs = EVValue.presetEVs
         guard let index = evs.firstIndex(of: viewModel.exposureBias) else {
             viewModel.exposureBias = .zero
             return
@@ -241,5 +288,23 @@ struct CameraViewPreview: PreviewProvider {
     static var previews: some View {
         return CameraView()
             .border(.white, width: 1)
+    }
+}
+
+extension View {
+    func rotateWithVideoOrientation(videoOrientation: AVCaptureVideoOrientation) -> some View {
+        var degree: Angle {
+            switch videoOrientation {
+            case .portraitUpsideDown:
+                return .degrees(180)
+            case .landscapeLeft:
+                return .degrees(-90)
+            case .landscapeRight:
+                return .degrees(90)
+            default:
+                return .zero
+            }
+        }
+        return rotationEffect(degree).animation(.default, value: videoOrientation)
     }
 }

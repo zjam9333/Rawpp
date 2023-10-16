@@ -71,18 +71,18 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             guard let rawFilter = CIRAWFilter(imageData: photoData, identifierHint: "raw") else {
                 return
             }
-            rawFilter.boostAmount = 0.5
-            if rawFilter.isColorNoiseReductionSupported {
-                rawFilter.colorNoiseReductionAmount = 0.2
-            }
-            if rawFilter.isLuminanceNoiseReductionSupported {
-                rawFilter.luminanceNoiseReductionAmount = 0.2
-            }
+//            rawFilter.boostAmount = 0.5
+//            if rawFilter.isColorNoiseReductionSupported {
+//                rawFilter.colorNoiseReductionAmount = 0.2
+//            }
+//            if rawFilter.isLuminanceNoiseReductionSupported {
+//                rawFilter.luminanceNoiseReductionAmount = 0.2
+//            }
             guard let ciimg = rawFilter.outputImage else {
                 return
             }
             ciimg.settingProperties(photo.metadata)
-            let option = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): 0.5]
+            let option = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): 0.6]
             compressedData = CIContext().heifRepresentation(of: ciimg, format: .BGRA8, colorSpace: CGColorSpace(name: CGColorSpace.displayP3)!, options: option)
         } else {
             if compressedData == nil {

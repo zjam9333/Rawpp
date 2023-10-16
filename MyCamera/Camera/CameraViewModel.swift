@@ -12,7 +12,7 @@ import UIKit
 import CoreMotion
 import CoreLocation
 
-@MainActor class CameraViewModel: ObservableObject {
+class CameraViewModel: ObservableObject {
     private let service = CameraService()
     
     @Published var photo: Photo?
@@ -32,6 +32,8 @@ import CoreLocation
     
     @Published var cameraPosition = AVCaptureDevice.Position.back
     @Published var cameraLens = AVCaptureDevice.DeviceType.builtInWideAngleCamera
+    
+    @Published var showingEVIndicators = false
     
     private static var cachedRawOption: RAWSaveOption {
         get {
@@ -56,58 +58,13 @@ import CoreLocation
     
     private var subscriptions = Set<AnyCancellable>()
     
-#if targetEnvironment(simulator)
-    var timer: Timer?
-#else
-    private let motionManager = CMMotionManager()
-#endif
-    
     init() {
 //        manager.delegate = self
 //        manager.requestAlwaysAuthorization()
 //        manager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "AbcdefgKey")
 //        manager.startUpdatingLocation()
         
-#if targetEnvironment(simulator)
-        timer = Timer(timeInterval: 1, repeats: true) { [weak self] t in
-            let uiori = UIDevice.current.orientation
-            switch uiori {
-            case .portrait:
-                self?.videoOrientation = .portrait
-            case .portraitUpsideDown:
-                self?.videoOrientation = .portraitUpsideDown
-                // 左右反的？
-            case .landscapeLeft:
-                self?.videoOrientation = .landscapeRight
-            case .landscapeRight:
-                self?.videoOrientation = .landscapeLeft
-            default:
-                break
-            }
-        }
-        RunLoop.main.add(timer!, forMode: .common)
-#else
-        if motionManager.isAccelerometerAvailable {
-            motionManager.accelerometerUpdateInterval = 1
-            motionManager.startAccelerometerUpdates(to: .main) { [weak self] acc, err in
-                guard let acc = acc else {
-                    return
-                }
-                let x = acc.acceleration.x
-                let y = acc.acceleration.y
-                //                print("acceleration", x, y)
-                if abs(x) > abs(y) {
-                    if abs(x) > 0.6 {
-                        self?.videoOrientation = x > 0 ? .landscapeLeft : .landscapeRight
-                    }
-                } else {
-                    if abs(y) > 0.6 {
-                        self?.videoOrientation = y > 0 ? .portraitUpsideDown : .portrait
-                    }
-                }
-            }
-        }
-        #endif
+        setupMotion()
         
         service.$photo.receive(on: DispatchQueue.main).sink { [weak self] (photo) in
             guard let pic = photo else { return }
@@ -148,7 +105,6 @@ import CoreLocation
             self?.service.orientationChanged(orientation: ori)
         }.store(in: &self.subscriptions)
     }
-    
     
     func configure() {
         DispatchQueue.global().async { [self] in
@@ -191,4 +147,77 @@ import CoreLocation
             service.focus(pointOfInterest: pointOfInterest)
         }
     }
+    
+    
+#if targetEnvironment(simulator)
+    var timer: Timer?
+    func setupMotion() {
+        timer = Timer(timeInterval: 1, repeats: true) { [weak self] t in
+            let uiori = UIDevice.current.orientation
+            switch uiori {
+            case .portrait:
+                self?.videoOrientation = .portrait
+            case .portraitUpsideDown:
+                self?.videoOrientation = .portraitUpsideDown
+                // 左右反的？
+            case .landscapeLeft:
+                self?.videoOrientation = .landscapeRight
+            case .landscapeRight:
+                self?.videoOrientation = .landscapeLeft
+            default:
+                break
+            }
+        }
+        RunLoop.main.add(timer!, forMode: .common)
+    }
+#else
+    private let motionManager = CMMotionManager()
+    
+    func setupMotion() {
+        guard motionManager.isAccelerometerAvailable else  {
+            return
+        }
+        startAcc()
+        
+        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification).receive(on: DispatchQueue.main).sink { [weak self] _ in
+            print("didBecomeActiveNotification")
+            self?.startAcc()
+        }.store(in: &subscriptions)
+        
+        NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification).receive(on: DispatchQueue.main).sink { [weak self] _ in
+            print("willResignActiveNotification")
+            self?.stopAcc()
+        }.store(in: &subscriptions)
+    }
+    
+    func stopAcc() {
+        motionManager.stopAccelerometerUpdates()
+    }
+    
+    func startAcc() {
+        motionManager.stopAccelerometerUpdates()
+        motionManager.accelerometerUpdateInterval = 1
+        motionManager.startAccelerometerUpdates(to: .main) { [weak self] dat, err in
+            if let err = err {
+                print("startAccelerometerUpdates Err", err)
+            }
+            guard let acc = dat else {
+                return
+            }
+            let x = acc.acceleration.x
+            let y = acc.acceleration.y
+            print("acceleration", x, y)
+            if abs(x) > abs(y) {
+                if abs(x) > 0.6 {
+                    self?.videoOrientation = x > 0 ? .landscapeLeft : .landscapeRight
+                }
+            } else {
+                if abs(y) > 0.6 {
+                    self?.videoOrientation = y > 0 ? .portraitUpsideDown : .portrait
+                }
+            }
+        }
+    }
+    
+    #endif
 }
