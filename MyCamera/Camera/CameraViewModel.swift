@@ -35,6 +35,13 @@ class CameraViewModel: ObservableObject {
     
     @Published var showingEVIndicators = false
     
+    private let feedbackGenerator = UISelectionFeedbackGenerator()
+    
+    func touchFeedback() {
+        feedbackGenerator.prepare()
+        feedbackGenerator.selectionChanged()
+    }
+    
     private static var cachedRawOption: RAWSaveOption {
         get {
             guard let value = UserDefaults.standard.value(forKey: "CameraViewModelCachedRawOption") as? Int else {
