@@ -12,7 +12,7 @@ import UIKit
 import CoreMotion
 import CoreLocation
 
-class CameraViewModel: ObservableObject {
+class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let service = CameraService()
     
     @Published var photo: Photo?
@@ -65,11 +65,12 @@ class CameraViewModel: ObservableObject {
     
     private var subscriptions = Set<AnyCancellable>()
     
-    init() {
-//        manager.delegate = self
-//        manager.requestAlwaysAuthorization()
-//        manager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "AbcdefgKey")
-//        manager.startUpdatingLocation()
+    override init() {
+        super.init()
+        
+        Task {
+            await setupGPS()
+        }
         
         setupMotion()
         
@@ -113,6 +114,8 @@ class CameraViewModel: ObservableObject {
         }.store(in: &self.subscriptions)
     }
     
+    // MARK: Camera Service
+    
     func configure() {
         DispatchQueue.global().async { [self] in
             service.checkForPermissions()
@@ -121,9 +124,8 @@ class CameraViewModel: ObservableObject {
     }
     
     func capturePhoto() {
-        let r = rawOption
         DispatchQueue.global().async { [self] in
-            service.capturePhoto(rawOption: r)
+            service.capturePhoto(rawOption: rawOption, location: lastLocation)
         }
     }
     
@@ -155,7 +157,7 @@ class CameraViewModel: ObservableObject {
         }
     }
     
-    
+    // MARK: Device Orientation
 #if targetEnvironment(simulator)
     var timer: Timer?
     func setupMotion() {
@@ -227,4 +229,22 @@ class CameraViewModel: ObservableObject {
     }
     
     #endif
+    
+    // MARK: Core Location
+    
+    var lastLocation: CLLocation?
+    let locationManager = CLLocationManager()
+    func setupGPS() async {
+        locationManager.delegate = self
+        locationManager.requestAlwaysAuthorization()
+        try? await locationManager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "AbcdefgKey")
+        locationManager.startUpdatingLocation()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        print("didUpdateLocations", locations)
+        if let fi = locations.first {
+            lastLocation = fi
+        }
+    }
 }

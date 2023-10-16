@@ -211,7 +211,7 @@ class CameraService {
         }
     }
     
-    func capturePhoto(rawOption: RAWSaveOption) {
+    func capturePhoto(rawOption: RAWSaveOption, location: CLLocation? = nil) {
         guard setupResult != .configurationFailed else {
             return
         }
@@ -240,13 +240,13 @@ class CameraService {
             rawOption = .heif
         }
         
-//        if let location = LocationManager.shared.location {
-//            photoSettings.metadata[kCGImagePropertyGPSDictionary as String] = [
-//                kCGImagePropertyGPSLatitude as String: location.coordinate.latitude,
-//                kCGImagePropertyGPSLongitude as String: location.coordinate.longitude,
-//            ]
-        // 这部分很难弄，很多信息要填
-//        }
+        if let location = location {
+            photoSettings.metadata[kCGImagePropertyGPSDictionary as String] = [
+                kCGImagePropertyGPSLatitude as String: location.coordinate.latitude,
+                kCGImagePropertyGPSLongitude as String: location.coordinate.longitude,
+            ]
+//         这部分很难弄，很多信息要填
+        }
         if videoDeviceInput?.device.isFlashAvailable == true {
             photoSettings.flashMode = flashMode
         }
@@ -265,7 +265,9 @@ class CameraService {
         // Remove the delegate reference when it finishes its processing.
         delegate.didFinish = { [weak self] phot in
             self?.inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = nil
-            self?.photo = phot
+            DispatchQueue.main.async {
+                self?.photo = phot
+            }
         }
         
         // Tell the output to capture the photo.

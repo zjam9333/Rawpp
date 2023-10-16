@@ -58,43 +58,55 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         
         guard error == nil else {
             print("Error capturing photo: \(error!)")
+            savePhotoToAlbum()
             return
         }
         
         if photo.isRawPhoto {
-            // Access the file data representation of this photo.
-            guard let photoData = photo.fileDataRepresentation() else {
-                return
+            Task {
+                await handleRawOutput(photo: photo)
             }
-            rawData = photoData
-            // 优先使用raw转的jpeg data，避免苹果默认的处理
-            guard let rawFilter = CIRAWFilter(imageData: photoData, identifierHint: "raw") else {
-                return
-            }
-//            rawFilter.boostAmount = 0.5
-//            if rawFilter.isColorNoiseReductionSupported {
-//                rawFilter.colorNoiseReductionAmount = 0.2
-//            }
-//            if rawFilter.isLuminanceNoiseReductionSupported {
-//                rawFilter.luminanceNoiseReductionAmount = 0.2
-//            }
-            guard let ciimg = rawFilter.outputImage else {
-                return
-            }
-            ciimg.settingProperties(photo.metadata)
-            let option = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): 0.6]
-            compressedData = CIContext().heifRepresentation(of: ciimg, format: .BGRA8, colorSpace: CGColorSpace(name: CGColorSpace.displayP3)!, options: option)
         } else {
             if compressedData == nil {
                 // compressed的另一个data
                 // 锐化过度的版本
                 compressedData = photo.fileDataRepresentation()
+                savePhotoToAlbum()
             }
         }
     }
     
-    // After both RAW and compressed versions are complete, add them to the Photos library.
-    func photoOutput(_ output: AVCapturePhotoOutput, didFinishCaptureFor resolvedSettings: AVCaptureResolvedPhotoSettings, error: Error?) {
+    func handleRawOutput(photo: AVCapturePhoto) async {
+        
+        defer {
+            savePhotoToAlbum()
+        }
+        
+        // Access the file data representation of this photo.
+        guard let photoData = photo.fileDataRepresentation() else {
+            return
+        }
+        rawData = photoData
+        // 优先使用raw转的jpeg data，避免苹果默认的处理
+        guard let rawFilter = CIRAWFilter(imageData: photoData, identifierHint: "raw") else {
+            return
+        }
+        //            rawFilter.boostAmount = 0.5
+        //            if rawFilter.isColorNoiseReductionSupported {
+        //                rawFilter.colorNoiseReductionAmount = 0.2
+        //            }
+        //            if rawFilter.isLuminanceNoiseReductionSupported {
+        //                rawFilter.luminanceNoiseReductionAmount = 0.2
+        //            }
+        guard let ciimg = rawFilter.outputImage else {
+            return
+        }
+        ciimg.settingProperties(photo.metadata)
+        let option = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): 0.6]
+        compressedData = CIContext().heifRepresentation(of: ciimg, format: .BGRA8, colorSpace: CGColorSpace(name: CGColorSpace.displayP3)!, options: option)
+    }
+    
+    func savePhotoToAlbum() {
         
         // Call the "finished" closure, if you set it.
         defer {
@@ -103,11 +115,6 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             } else {
                 didFinish?(nil)
             }
-        }
-        
-        guard error == nil else {
-            print("Error capturing photo: \(error!)")
-            return
         }
         
         // Ensure the RAW and processed photo data exists.
