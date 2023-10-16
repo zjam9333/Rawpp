@@ -25,9 +25,7 @@ class CameraService {
         .front: AVCaptureDevice.DiscoverySession(deviceTypes: usingDeviceTypes, mediaType: .video, position: .front)
     ]
     
-    @Published var flashMode: AVCaptureDevice.FlashMode = .off
     @Published var shouldShowAlertView = false
-    @Published var willCapturePhoto = false
     @Published var photo: Photo?
     @Published var cameraPosition = AVCaptureDevice.Position.back
     @Published var cameraLens = AVCaptureDevice.DeviceType.builtInWideAngleCamera
@@ -211,7 +209,7 @@ class CameraService {
         }
     }
     
-    func capturePhoto(rawOption: RAWSaveOption, location: CLLocation? = nil) {
+    func capturePhoto(rawOption: RAWSaveOption, location: CLLocation?, flashMode: AVCaptureDevice.FlashMode) {
         guard setupResult != .configurationFailed else {
             return
         }
@@ -252,23 +250,13 @@ class CameraService {
         }
         
         // Create a delegate to monitor the capture process.
-        let delegate = RAWCaptureDelegate(option: rawOption)
-        inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = delegate
-        
-        DispatchQueue.main.async {
-            self.willCapturePhoto = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.willCapturePhoto = false
-            }
-        }
-        
-        // Remove the delegate reference when it finishes its processing.
-        delegate.didFinish = { [weak self] phot in
+        let delegate = RAWCaptureDelegate(option: rawOption) { [weak self] phot in
             self?.inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = nil
             DispatchQueue.main.async {
                 self?.photo = phot
             }
         }
+        inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = delegate
         
         // Tell the output to capture the photo.
         photoOutput.capturePhoto(with: photoSettings, delegate: delegate)

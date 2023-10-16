@@ -34,8 +34,10 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var cameraLens = AVCaptureDevice.DeviceType.builtInWideAngleCamera
     
     @Published var showingEVIndicators = false
+    @Published var isAppInBackground = false
     
     private let feedbackGenerator = UISelectionFeedbackGenerator()
+    var lastEVDragOffset: CGFloat = 0
     
     func touchFeedback() {
         feedbackGenerator.prepare()
@@ -74,6 +76,22 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         
         setupMotion()
         
+        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification).receive(on: DispatchQueue.main).sink { [weak self] _ in
+            self?.isAppInBackground = false
+        }.store(in: &subscriptions)
+        
+        NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification).receive(on: DispatchQueue.main).sink { [weak self] _ in
+            self?.isAppInBackground = true
+        }.store(in: &subscriptions)
+        
+        $isAppInBackground.receive(on: DispatchQueue.main).sink { [weak self] isBack in
+            if isBack {
+                self?.stopAcc()
+            } else {
+                self?.startAcc()
+            }
+        }.store(in: &subscriptions)
+        
         service.$photo.receive(on: DispatchQueue.main).sink { [weak self] (photo) in
             guard let pic = photo else { return }
             self?.photo = pic
@@ -82,16 +100,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         
         service.$shouldShowAlertView.receive(on: DispatchQueue.main).sink { [weak self] (val) in
             self?.showAlertError = val
-        }
-        .store(in: &self.subscriptions)
-        
-        service.$flashMode.receive(on: DispatchQueue.main).sink { [weak self] (mode) in
-            self?.isFlashOn = mode == .on
-        }
-        .store(in: &self.subscriptions)
-        
-        service.$willCapturePhoto.receive(on: DispatchQueue.main).sink { [weak self] ca in
-            self?.isCapturing = ca
         }
         .store(in: &self.subscriptions)
         
@@ -125,7 +133,11 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     func capturePhoto() {
         DispatchQueue.global().async { [self] in
-            service.capturePhoto(rawOption: rawOption, location: lastLocation)
+            service.capturePhoto(rawOption: rawOption, location: lastLocation, flashMode: isFlashOn ? .on : .off)
+        }
+        self.isCapturing = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.isCapturing = false
         }
     }
     
@@ -146,9 +158,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     func switchFlash() {
-        DispatchQueue.global().async { [self] in
-            service.flashMode = service.flashMode == .on ? .off : .on
-        }
+        isFlashOn.toggle()
     }
     
     func focus(pointOfInterest: CGPoint) {
@@ -158,9 +168,15 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     // MARK: Device Orientation
+    
 #if targetEnvironment(simulator)
     var timer: Timer?
+#endif
+    
+    private let motionManager = CMMotionManager()
+    
     func setupMotion() {
+#if targetEnvironment(simulator)
         timer = Timer(timeInterval: 1, repeats: true) { [weak self] t in
             let uiori = UIDevice.current.orientation
             switch uiori {
@@ -178,25 +194,9 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
         }
         RunLoop.main.add(timer!, forMode: .common)
-    }
-#else
-    private let motionManager = CMMotionManager()
-    
-    func setupMotion() {
-        guard motionManager.isAccelerometerAvailable else  {
-            return
-        }
+#endif
+        
         startAcc()
-        
-        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification).receive(on: DispatchQueue.main).sink { [weak self] _ in
-            print("didBecomeActiveNotification")
-            self?.startAcc()
-        }.store(in: &subscriptions)
-        
-        NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification).receive(on: DispatchQueue.main).sink { [weak self] _ in
-            print("willResignActiveNotification")
-            self?.stopAcc()
-        }.store(in: &subscriptions)
     }
     
     func stopAcc() {
@@ -227,8 +227,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
         }
     }
-    
-    #endif
     
     // MARK: Core Location
     

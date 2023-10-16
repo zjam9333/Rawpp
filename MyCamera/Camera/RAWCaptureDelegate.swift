@@ -34,8 +34,9 @@ enum RAWSaveOption: Int {
 
 class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     
-    init(option: RAWSaveOption) {
+    init(option: RAWSaveOption, didFinish: @escaping (Photo?) -> Void) {
         self.saveOption = option
+        self.didFinish = didFinish
         super.init()
     }
     
@@ -44,7 +45,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     private var rawData: Data?
     private var compressedData: Data?
     
-    var didFinish: ((Photo?) -> Void)?
+    let didFinish: (Photo?) -> Void
     
     func photoOutput(_ output: AVCapturePhotoOutput, willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings) {
         // dispose system shutter sound
@@ -111,9 +112,9 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         // Call the "finished" closure, if you set it.
         defer {
             if let photoData = compressedData ?? rawData {
-                didFinish?(Photo(data: photoData))
+                didFinish(Photo(data: photoData))
             } else {
-                didFinish?(nil)
+                didFinish(nil)
             }
         }
         

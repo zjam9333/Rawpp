@@ -13,11 +13,6 @@ import SwiftUI
 @MainActor struct CameraView: View {
     @StateObject var viewModel = CameraViewModel()
     
-    class EVOffsetCache {
-        var lastInitOffset: CGFloat = 0
-    }
-    private let evOffsetCache = EVOffsetCache()
-    
     var body: some View {
         VStack {
             HStack(spacing: 20) {
@@ -74,12 +69,15 @@ import SwiftUI
             
             ZStack {
                 CameraVideoLayerPreview(session: viewModel.session)
+                    .aspectRatio(contentMode: .fill)
                     .clipped()
-//                            .scaleEffect(x: 0.2, y: 0.2)
-                
-                if viewModel.isCapturing {
-                    Color(.black).opacity(0.5)
-                }
+                    .opacity(viewModel.isAppInBackground ? 0 : 1)
+                    .animation(.default, value: viewModel.isAppInBackground)
+                    .overlay {
+                        if viewModel.isCapturing {
+                            Color(.black).opacity(0.5)
+                        }
+                    }
                 
                 Group {
                     Group {
@@ -118,16 +116,16 @@ import SwiftUI
                                 viewModel.showingEVIndicators = true
                                 let currentOffSet = -(value.location.y - value.startLocation.y)
                                 let thres: CGFloat = 16
-                                if (currentOffSet - evOffsetCache.lastInitOffset > thres) {
-                                    evOffsetCache.lastInitOffset += thres
+                                if (currentOffSet - viewModel.lastEVDragOffset > thres) {
+                                    viewModel.lastEVDragOffset += thres
                                     increaseEV(step: 1)
-                                } else if (currentOffSet - evOffsetCache.lastInitOffset <= -thres) {
-                                    evOffsetCache.lastInitOffset -= thres
+                                } else if (currentOffSet - viewModel.lastEVDragOffset <= -thres) {
+                                    viewModel.lastEVDragOffset -= thres
                                     increaseEV(step: -1)
                                 }
                             }
                             .onEnded{ v in
-                                evOffsetCache.lastInitOffset = 0
+                                viewModel.lastEVDragOffset = 0
                                 viewModel.showingEVIndicators = false
                             }
                     )
@@ -138,7 +136,6 @@ import SwiftUI
                             }
                     )
                     .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
-                
             }
             
             HStack {
@@ -153,6 +150,8 @@ import SwiftUI
                             .frame(width: 74, height: 74)
                             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
                     }
+                    .opacity(viewModel.isAppInBackground ? 0 : 1)
+                    .animation(.default, value: viewModel.isAppInBackground)
                 }
                 
                 Spacer()
@@ -219,6 +218,8 @@ import SwiftUI
                 Image(uiImage: img)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    .opacity(viewModel.isAppInBackground ? 0 : 1)
+                    .animation(.default, value: viewModel.isAppInBackground)
             } else {
                 EmptyView()
             }
