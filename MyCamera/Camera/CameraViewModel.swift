@@ -19,14 +19,26 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var showAlertError = false
     @Published var isFlashOn = false
     @Published var isCapturing = false
-    @Published var rawOption: RAWSaveOption = CameraViewModel.cachedRawOption {
+    @Published var rawOption: RAWSaveOption = .cachedRawOption {
         didSet {
-            CameraViewModel.cachedRawOption = rawOption
+            RAWSaveOption.cachedRawOption = rawOption
         }
     }
     @Published var showPhoto: Bool = false
     
-    @Published var exposureBias: EVValue = .zero
+    @Published var exposureMode = ExposureMode.auto
+    
+    @Published var exposureValue: ExposureValue = .cachedExposureValue {
+        didSet {
+            let range: ClosedRange<Float> = -1...1
+            if range.contains(exposureValue.floatValue) {
+                ExposureValue.cachedExposureValue = exposureValue
+            }
+        }
+    }
+    
+    @Published var shutterSpeed: ShutterSpeed = .percent100
+    @Published var ISO: ISOValue = .iso100
     
     @Published var videoOrientation: AVCaptureVideoOrientation = .portrait
     
@@ -42,19 +54,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     func touchFeedback() {
         feedbackGenerator.prepare()
         feedbackGenerator.selectionChanged()
-    }
-    
-    private static var cachedRawOption: RAWSaveOption {
-        get {
-            guard let value = UserDefaults.standard.value(forKey: "CameraViewModelCachedRawOption") as? Int else {
-                return .heif
-            }
-            return RAWSaveOption(rawValue: value) ?? .heif
-        }
-        set {
-            let value = newValue.rawValue
-            UserDefaults.standard.setValue(value, forKey: "CameraViewModelCachedRawOption")
-        }
     }
     
     var alertError: AlertError {
@@ -113,8 +112,16 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         .store(in: &self.subscriptions)
         
-        $exposureBias.receive(on: DispatchQueue.global()).sink { [weak self] bias in
-            self?.service.setExposureBias(bias.rawValue)
+        $exposureValue.receive(on: DispatchQueue.global()).sink { [weak self] _ in
+            self?.setExposure()
+        }.store(in: &self.subscriptions)
+        
+        $ISO.receive(on: DispatchQueue.global()).sink { [weak self] _ in
+            self?.setExposure()
+        }.store(in: &self.subscriptions)
+        
+        $shutterSpeed.receive(on: DispatchQueue.global()).sink { [weak self] _ in
+            self?.setExposure()
         }.store(in: &self.subscriptions)
         
         $videoOrientation.receive(on: DispatchQueue.global()).sink { [weak self] ori in
@@ -128,6 +135,9 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         DispatchQueue.global().async { [self] in
             service.checkForPermissions()
             service.configureSession()
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1) { [self] in
+                setExposure()
+            }
         }
     }
     
@@ -142,18 +152,16 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     func changeCamera(step: Int) {
-        let bia = exposureBias.rawValue
         DispatchQueue.global().async { [self] in
             service.changeCamera(step: step)
-            service.setExposureBias(bia)
+            setExposure()
         }
     }
     
     func toggleFrontCamera() {
-        let bia = exposureBias.rawValue
         DispatchQueue.global().async { [self] in
             service.toggleFrontCamera()
-            service.setExposureBias(bia)
+            setExposure()
         }
     }
     
@@ -167,15 +175,62 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
     
+    private func setExposure() {
+        DispatchQueue.global().async { [self] in
+            switch exposureMode {
+            case .auto:
+                service.setExposureValue(exposureValue.floatValue)
+            case .manual:
+                service.setCustomExposure(shutterSpeed: shutterSpeed.cmTime, iso: ISO.floatValue)
+            }
+        }
+    }
+    
+    func increaseEV(step: Int) {
+        let values = ExposureValue.presetExposureValues
+        guard let index = values.firstIndex(of: exposureValue) else {
+            exposureValue = .zero
+            return
+        }
+        let next = index + step
+        if values.indices.contains(next) {
+            exposureValue = values[next]
+        }
+    }
+    
+    func increaseISO(step: Int) {
+        let values = ISOValue.presetISOs
+        guard let index = values.firstIndex(of: ISO) else {
+            ISO = .iso100
+            return
+        }
+        let next = index + step
+        if values.indices.contains(next) {
+            ISO = values[next]
+        }
+    }
+    
+    func increaseShutterSpeed(step: Int) {
+        let values = ShutterSpeed.presetShutterSpeeds
+        guard let index = values.firstIndex(of: shutterSpeed) else {
+            shutterSpeed = .percent100
+            return
+        }
+        let next = index + step
+        if values.indices.contains(next) {
+            shutterSpeed = values[next]
+        }
+    }
+    
     // MARK: Device Orientation
     
 #if targetEnvironment(simulator)
-    var timer: Timer?
+    private var timer: Timer?
 #endif
     
     private let motionManager = CMMotionManager()
     
-    func setupMotion() {
+    private func setupMotion() {
 #if targetEnvironment(simulator)
         timer = Timer(timeInterval: 1, repeats: true) { [weak self] t in
             let uiori = UIDevice.current.orientation
@@ -199,11 +254,11 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         startAcc()
     }
     
-    func stopAcc() {
+    private func stopAcc() {
         motionManager.stopAccelerometerUpdates()
     }
     
-    func startAcc() {
+    private func startAcc() {
         motionManager.stopAccelerometerUpdates()
         motionManager.accelerometerUpdateInterval = 1
         motionManager.startAccelerometerUpdates(to: .main) { [weak self] dat, err in
@@ -230,9 +285,9 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     // MARK: Core Location
     
-    var lastLocation: CLLocation?
-    let locationManager = CLLocationManager()
-    func setupGPS() async {
+    private var lastLocation: CLLocation?
+    private let locationManager = CLLocationManager()
+    private func setupGPS() async {
         locationManager.delegate = self
         locationManager.requestAlwaysAuthorization()
         try? await locationManager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "AbcdefgKey")

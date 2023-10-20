@@ -188,7 +188,7 @@ class CameraService {
         }
     }
     
-    func setExposureBias(_ bias: Float) {
+    func setExposureValue(_ bias: Float) {
         guard let device = videoDeviceInput?.device else {
             return
         }
@@ -201,7 +201,40 @@ class CameraService {
         Task {
             do {
                 try device.lockForConfiguration()
+                if device.isExposureModeSupported(.continuousAutoExposure) {
+                    device.exposureMode = .continuousAutoExposure
+                } else if device.isExposureModeSupported(.autoExpose) {
+                    device.exposureMode = .autoExpose
+                }
                 await device.setExposureTargetBias(bias)
+                device.unlockForConfiguration()
+            } catch {
+                
+            }
+        }
+    }
+    
+    func setCustomExposure(shutterSpeed: CMTime, iso: Float) {
+        guard let device = videoDeviceInput?.device else {
+            return
+        }
+        guard device.isExposureModeSupported(.custom) else {
+            return
+        }
+        let isoRange = device.activeFormat.minISO...device.activeFormat.maxISO
+        guard isoRange.contains(iso) else {
+            return
+        }
+        let shutterRange = device.activeFormat.minExposureDuration.seconds...device.activeFormat.maxExposureDuration.seconds
+        guard shutterRange.contains(shutterSpeed.seconds) else {
+            return
+        }
+        Task {
+            do {
+                try device.lockForConfiguration()
+                device.exposureMode = .custom
+                let usingTime = await device.setExposureModeCustom(duration: shutterSpeed, iso: iso)
+                print("pass", shutterSpeed, "using", usingTime)
                 device.unlockForConfiguration()
             } catch {
                 

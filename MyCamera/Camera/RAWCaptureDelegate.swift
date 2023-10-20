@@ -8,30 +8,6 @@
 import AVFoundation
 import Photos
 
-enum RAWSaveOption: Int {
-    case raw
-    case heif
-    case rawAndHeif
-    
-    var saveRAW: Bool {
-        switch self {
-        case .raw, .rawAndHeif:
-            return true
-        default:
-            return false
-        }
-    }
-    
-    var saveJpeg: Bool {
-        switch self {
-        case .heif, .rawAndHeif:
-            return true
-        default:
-            return false
-        }
-    }
-}
-
 class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     
     init(option: RAWSaveOption, didFinish: @escaping (Photo?) -> Void) {
