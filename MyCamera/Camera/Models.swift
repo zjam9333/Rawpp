@@ -146,17 +146,16 @@ struct ISOValue: Equatable, Hashable {
     static let iso100: ISOValue = .init(rawValue: 100)
     
     static let presetISOs: [ISOValue] = {
-        var ints = [32, 64]
-        var curr = 100
-        let maxISO = 1600
-        while curr < maxISO {
-            ints.append(curr)
-            let step = curr / 3
-            ints.append(curr + step)
-            ints.append(curr + step + step)
-            curr += curr
-        }
-        ints.append(maxISO)
+        // step: 1/3 = 1.26
+        let ints = [
+            25, 32, 40,
+            50, 64, 80,
+            100, 125, 160,
+            200, 250, 320,
+            400, 500, 640,
+            800, 1000, 1280,
+            1600,
+        ]
         let pres = ints.map { i in
             return ISOValue(rawValue: i)
         }
@@ -165,78 +164,52 @@ struct ISOValue: Equatable, Hashable {
 }
 
 struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible {
-    private let rawValue: Int
+    private let rawValue: UInt
     
-    init(rawValue: Int) {
+    init(rawValue: UInt) {
         self.rawValue = rawValue
     }
     
     var floatValue: Float {
-        if rawValue >= 0 {
-            return Float(rawValue)
-        }
-        return 1 / Float(-rawValue)
+        return 1 / Float(rawValue)
     }
     
     var description: String {
-        if rawValue >= 0 {
-            return "\(rawValue)"
-        }
-        return "1/\(-rawValue)"
+        return "1/\(rawValue)"
     }
     
     var cmTime: CMTime {
-        if rawValue >= 0 {
-            return .init(value: .init(rawValue), timescale: 1)
-        }
-        return .init(value: .init(1), timescale: .init(-rawValue))
+        return .init(value: .init(1), timescale: .init(rawValue))
     }
     
-    static let percent100: ShutterSpeed = .init(rawValue: -100)
+    static let percent100: ShutterSpeed = .init(rawValue: 100)
     
     static let presetShutterSpeeds: [ShutterSpeed] = {
-//        let maxS = -10
-        let minS = -4096
-        var ints: [Int] = []
-//        do {
-//            var curr = 1
-//            while curr < maxS {
-//                ints.append(curr)
-//                let step = curr / 3
-//                if step != 0 {
-//                    ints.append(curr + step)
-//                    ints.append(curr + step + step)
-//                }
-//                curr += curr
-//            }
-//            ints.append(maxS)
-//        }
-        // 最大只能0.3333秒。。。
-        // 从0.25开始遍历
-        do {
-            var curr = -4
-            while curr > minS {
-                ints.append(curr)
-                let step = curr / 3
-                if step != 0 {
-                    ints.append(curr + step)
-                    ints.append(curr + step + step)
-                }
-                curr += curr
-            }
-            ints.append(minS)
-        }
-        let pres = ints.map { rawValue in
-            var rawValue = rawValue
-            if rawValue <= -1000 {
-                rawValue = rawValue / 100 * 100
-            } else if rawValue <= -100 {
-                rawValue = rawValue / 10 * 10
-            }
-            return ShutterSpeed(rawValue: rawValue)
-        }.sorted { s1, s2 in
-            return s1.rawValue < s2.rawValue
+        // MARK: iphone不支持慢速快门
+        //let ints = [-2, -4, -8, -15, -30, -60, -125, -250, -500, -1000, -4000]
+        let ints: [UInt] = [
+            2,
+            3, 4, 5,
+            6, 8, 10,
+            12, 15, 20,
+            25, 30, 40,
+            50, 60, 80,
+            100, 125, 160,
+            200, 250, 320,
+            400, 500, 640,
+            800, 1000, 1280,
+            1600, 2000, 2500,
+            3200, 4000,
+        ]
+        let pres = ints.map { t in
+            return ShutterSpeed(rawValue: t)
         }
         return pres
     }()
+}
+
+extension AVCaptureVideoOrientation {
+    var isLandscape: Bool {
+        return self == .landscapeLeft || self == .landscapeRight
+    }
 }

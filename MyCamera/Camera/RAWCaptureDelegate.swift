@@ -32,33 +32,23 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput,
                      didFinishProcessingPhoto photo: AVCapturePhoto,
                      error: Error?) {
-        
-        guard error == nil else {
-            print("Error capturing photo: \(error!)")
-            savePhotoToAlbum()
-            return
-        }
-        
-        if photo.isRawPhoto {
-            Task {
+        Task {
+            if let error = error {
+                print("didFinishProcessingPhoto", error)
+            } else if photo.isRawPhoto {
                 await handleRawOutput(photo: photo)
+            } else {
+                if compressedData == nil {
+                    // compressed的另一个data
+                    // 锐化过度的版本
+                    compressedData = photo.fileDataRepresentation()
+                }
             }
-        } else {
-            if compressedData == nil {
-                // compressed的另一个data
-                // 锐化过度的版本
-                compressedData = photo.fileDataRepresentation()
-                savePhotoToAlbum()
-            }
+            await savePhotoToAlbum()
         }
     }
     
     func handleRawOutput(photo: AVCapturePhoto) async {
-        
-        defer {
-            savePhotoToAlbum()
-        }
-        
         // Access the file data representation of this photo.
         guard let photoData = photo.fileDataRepresentation() else {
             return
@@ -68,13 +58,6 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         guard let rawFilter = CIRAWFilter(imageData: photoData, identifierHint: "raw") else {
             return
         }
-        //            rawFilter.boostAmount = 0.5
-        //            if rawFilter.isColorNoiseReductionSupported {
-        //                rawFilter.colorNoiseReductionAmount = 0.2
-        //            }
-        //            if rawFilter.isLuminanceNoiseReductionSupported {
-        //                rawFilter.luminanceNoiseReductionAmount = 0.2
-        //            }
         guard let ciimg = rawFilter.outputImage else {
             return
         }
@@ -83,50 +66,22 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         compressedData = CIContext().heifRepresentation(of: ciimg, format: .BGRA8, colorSpace: CGColorSpace(name: CGColorSpace.displayP3)!, options: option)
     }
     
-    func savePhotoToAlbum() {
-        
-        // Call the "finished" closure, if you set it.
-        defer {
-            if let photoData = compressedData ?? rawData {
-                didFinish(Photo(data: photoData))
-            } else {
-                didFinish(nil)
-            }
-        }
-        
-        // Ensure the RAW and processed photo data exists.
-        if saveOption.saveRAW, let rawData = rawData {
-            // Request add-only access to the user's Photos library (if the user hasn't already granted that access).
-            PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
-                
-                // Don't continue unless the user granted access.
-                guard status == .authorized else { return }
-                
-                PHPhotoLibrary.shared().performChanges {
-                    // Save the RAW (DNG) file as the main resource for the Photos asset.
-                    let options = PHAssetResourceCreationOptions()
-                    
-                    let creationRequest = PHAssetCreationRequest.forAsset()
-                    creationRequest.addResource(with: .photo, data: rawData, options: options)
-                } completionHandler: { success, error in
-                    // Process the Photos library error.
-                }
+    func savePhotoToAlbum() async {
+        if saveOption.saveRAW, let rawData = rawData  {
+            try? await PHPhotoLibrary.shared().performChanges {
+                PHAssetCreationRequest.forAsset().addResource(with: .photo, data: rawData, options: nil)
             }
         }
         if saveOption.saveJpeg, let compressedData = compressedData {
-            // Request add-only access to the user's Photos library (if the user hasn't already granted that access).
-            PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
-                
-                // Don't continue unless the user granted access.
-                guard status == .authorized else { return }
-                
-                PHPhotoLibrary.shared().performChanges {
-                    let creationRequest = PHAssetCreationRequest.forAsset()
-                    creationRequest.addResource(with: .photo, data: compressedData, options: nil)
-                } completionHandler: { success, error in
-                    // Process the Photos library error.
-                }
+            try? await PHPhotoLibrary.shared().performChanges {
+                PHAssetCreationRequest.forAsset().addResource(with: .photo, data: compressedData, options: nil)
             }
+        }
+        
+        if let photoData = compressedData ?? rawData {
+            didFinish(Photo(data: photoData))
+        } else {
+            didFinish(nil)
         }
     }
 }

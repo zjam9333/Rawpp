@@ -74,12 +74,13 @@ struct CameraView: View {
                     viewModel.exposureMode = .auto
                 }
             } label: {
-                ZStack {
+                Group {
                     switch viewModel.exposureMode {
                     case .auto:
                         Text("AE")
                     case .manual:
                         Text("MANUAL")
+                            .foregroundColor(.red)
                     }
                 }
                 .font(.system(size: 10))
@@ -87,7 +88,6 @@ struct CameraView: View {
                 .padding(5)
                 .frame(height: 24)
                 .border(.white, width: 1)
-                .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             }
             
             Button {
@@ -116,7 +116,6 @@ struct CameraView: View {
                 .padding(5)
                 .frame(height: 24)
                 .border(.white, width: 1)
-                .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             }
         }
         .frame(height: 64)
@@ -130,6 +129,7 @@ struct CameraView: View {
                 CameraVideoLayerPreview(session: viewModel.session)
                     .aspectRatio(3 / 4, contentMode: .fill)
                     .clipped()
+                    .border(.gray, width: 1)
                     .opacity(viewModel.isAppInBackground ? 0 : 1)
                     .animation(.default, value: viewModel.isAppInBackground)
                     .overlay {
@@ -156,70 +156,18 @@ struct CameraView: View {
                         }
                         .opacity(viewModel.showingEVIndicators ? 1 : 0)
                     case .manual:
-                        Text(String(format: "ISO %.0f SS %@", viewModel.ISO.floatValue, viewModel.shutterSpeed.description)).font(.system(size: 12))
+                        Text(String(format: "ISO %.0f SS %@", viewModel.ISO.floatValue, viewModel.shutterSpeed.description))
+                            .font(.system(size: 12))
                             .foregroundColor(.white)
+                            .padding(10)
+                            .background(Color.black.opacity(0.5))
                             .opacity(viewModel.showingEVIndicators ? 1 : 0)
                     }
                 }
                 .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
                 .animation(viewModel.showingEVIndicators ? .default : .default.delay(1), value: viewModel.showingEVIndicators)
                 
-                Rectangle()
-                    .fill(.clear)
-                    .contentShape(Rectangle())
-//                    .border(.red)
-                    .onTapGesture(count: 2) {
-                        viewModel.exposureValue = .zero
-                        viewModel.shutterSpeed = .percent100
-                        viewModel.ISO = .iso100
-                    }
-                    .onTapGesture {
-                        viewModel.focus(pointOfInterest: .init(x: 0.5, y: 0.5))
-                    }
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                //                                print(value)
-                                //                                return
-                                func dragToggled(step: Int, left: Bool) {
-                                    viewModel.touchFeedback()
-                                    switch viewModel.exposureMode {
-                                    case .auto:
-                                        viewModel.increaseEV(step: step)
-                                    case .manual:
-                                        if left {
-                                            viewModel.increaseISO(step: step)
-                                        } else {
-                                            viewModel.increaseShutterSpeed(step: step)
-                                        }
-                                    }
-                                }
-                                
-                                viewModel.showingEVIndicators = true
-                                let currentOffSet = -(value.location.y - value.startLocation.y)
-                                let isLeft = value.startLocation.x < (geo.size.width / 2)
-                                let thres: CGFloat = 12
-                                if (currentOffSet - viewModel.lastEVDragOffset > thres) {
-                                    viewModel.lastEVDragOffset += thres
-                                    dragToggled(step: 1, left: isLeft)
-                                } else if (currentOffSet - viewModel.lastEVDragOffset <= -thres) {
-                                    viewModel.lastEVDragOffset -= thres
-                                    dragToggled(step: -1, left: isLeft)
-                                }
-                            }
-                            .onEnded{ v in
-                                viewModel.lastEVDragOffset = 0
-                                viewModel.showingEVIndicators = false
-                            }
-                    )
-                    .gesture(
-                        MagnificationGesture()
-                            .onEnded { amount in
-                                viewModel.changeCamera(step: amount > 1 ? 1 : -1)
-                            }
-                    )
-                    .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
-                    .frame(width: geo.size.width, height: geo.size.height)
+                gestureContainer(size: geo.size)
             }
         }
         .frame(width: UIScreen.main.bounds.size.width, height: UIScreen.main.bounds.size.width * 4 / 3)
@@ -334,6 +282,116 @@ struct CameraView: View {
         }
     }
     
+    @ViewBuilder func gestureContainer(size: CGSize) -> some View {
+        
+        Group {
+            switch viewModel.exposureMode {
+            case .auto:
+                Rectangle()
+                    .fill(.clear)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        stepDragGesture(onDraging: { b in
+                            viewModel.showingEVIndicators = b
+                        }, onStepToogled: { step in
+                            viewModel.touchFeedback()
+                            viewModel.increaseEV(step: step)
+                        }, offsetSetter: { value in
+                            viewModel.lastEVDragOffset = value
+                        }, offsetGetter: {
+                            return viewModel.lastEVDragOffset
+                        })
+                    )
+            case .manual:
+                HStack {
+                    Rectangle()
+                        .fill(.clear)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            stepDragGesture(onDraging: { b in
+                                viewModel.showingEVIndicators = b
+                            }, onStepToogled: { step in
+                                viewModel.touchFeedback()
+                                viewModel.increaseISO(step: step)
+                            }, offsetSetter: { value in
+                                viewModel.lastEVDragOffset = value
+                            }, offsetGetter: {
+                                return viewModel.lastEVDragOffset
+                            })
+                        )
+                    Rectangle()
+                        .fill(.clear)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            stepDragGesture(onDraging: { b in
+                                viewModel.showingEVIndicators = b
+                            }, onStepToogled: { step in
+                                viewModel.touchFeedback()
+                                viewModel.increaseShutterSpeed(step: step)
+                            }, offsetSetter: { value in
+                                viewModel.lastEVDragOffset = value
+                            }, offsetGetter: {
+                                return viewModel.lastEVDragOffset
+                            })
+                        )
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        //                    .border(.red)
+        .onTapGesture(count: 2) {
+            viewModel.exposureValue = .zero
+            viewModel.shutterSpeed = .percent100
+            viewModel.ISO = .iso100
+        }
+        .onTapGesture {
+            viewModel.focus(pointOfInterest: .init(x: 0.5, y: 0.5))
+        }
+        .gesture(
+            MagnificationGesture()
+                .onEnded { amount in
+                    viewModel.changeCamera(step: amount > 1 ? 1 : -1)
+                }
+        )
+        .frame(width: viewModel.videoOrientation.isLandscape ? size.height : size.width, height: viewModel.videoOrientation.isLandscape ? size.width : size.height)
+        .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
+        .frame(width: size.width, height: size.height)
+    }
+    
+    func dragToggled(step: Int, left: Bool) {
+        viewModel.touchFeedback()
+        switch viewModel.exposureMode {
+        case .auto:
+            viewModel.increaseEV(step: step)
+        case .manual:
+            if left {
+                viewModel.increaseISO(step: step)
+            } else {
+                viewModel.increaseShutterSpeed(step: step)
+            }
+        }
+    }
+    
+    func stepDragGesture(onDraging: @escaping (Bool) -> Void, onStepToogled: @escaping (Int) -> Void, offsetSetter: @escaping (CGFloat) -> Void, offsetGetter: @escaping () -> CGFloat) -> some Gesture {
+        return DragGesture()
+            .onChanged { value in
+                onDraging(true)
+                let currentOffSet = -(value.location.y - value.startLocation.y)
+                let thres: CGFloat = 12
+                let lastOffset = offsetGetter()
+                if (currentOffSet - lastOffset > thres) {
+                    offsetSetter(lastOffset + thres)
+                    onStepToogled(1)
+                } else if (currentOffSet - lastOffset <= -thres) {
+                    offsetSetter(lastOffset - thres)
+                    onStepToogled(-1)
+                }
+            }
+            .onEnded{ v in
+                offsetSetter(0)
+                onDraging(false)
+            }
+    }
 }
 
 struct CameraVideoLayerPreview: UIViewRepresentable {
@@ -356,10 +414,6 @@ struct CameraVideoLayerPreview: UIViewRepresentable {
         view.videoPreviewLayer.session = session
         view.videoPreviewLayer.connection?.videoOrientation = .portrait
         view.contentMode = .scaleAspectFill
-#if targetEnvironment(simulator)
-        view.layer.borderColor = UIColor.gray.cgColor
-        view.layer.borderWidth = 1
-#endif
         return view
     }
     
