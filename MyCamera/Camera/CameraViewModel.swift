@@ -15,7 +15,7 @@ import CoreLocation
 class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let service = CameraService()
     
-    @Published var photo: Photo?
+    @Published var photos: [Photo] = []
     @Published var showAlertError = false
     @Published var isFlashOn = false
     @Published var isCapturing = false
@@ -93,7 +93,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         
         service.$photo.receive(on: DispatchQueue.main).sink { [weak self] (photo) in
             guard let pic = photo else { return }
-            self?.photo = pic
+            self?.photos.insert(pic, at: 0)
         }
         .store(in: &self.subscriptions)
         

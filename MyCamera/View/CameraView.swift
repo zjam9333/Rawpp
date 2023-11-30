@@ -21,16 +21,8 @@ struct CameraView: View {
             bottomActions
         }
         .preferredColorScheme(.dark)
-        .sheet(isPresented: $viewModel.showPhoto) {
-            if let data = viewModel.photo?.data, let img = UIImage(data: data) {
-                Image(uiImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .opacity(viewModel.isAppInBackground ? 0 : 1)
-                    .animation(.default, value: viewModel.isAppInBackground)
-            } else {
-                EmptyView()
-            }
+        .fullScreenCover(isPresented: $viewModel.showPhoto) {
+            PhotoReview(photos: viewModel.photos, presenting: $viewModel.showPhoto)
         }
         .onAppear {
             viewModel.configure()
@@ -175,7 +167,7 @@ struct CameraView: View {
     
     @ViewBuilder private var bottomActions: some View {
         HStack {
-            if let data = viewModel.photo?.data, let img = UIImage(data: data) {
+            if let data = viewModel.photos.first?.data, let img = UIImage(data: data) {
                 Button {
                     viewModel.touchFeedback()
                     viewModel.showPhoto = true
