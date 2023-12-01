@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-private let log = false
+private let log = true
 
 /// 覆盖print
 private func print(_ items: Any..., separator: String = " ") {
@@ -32,22 +32,16 @@ struct ZoomView<Content: View>: UIViewRepresentable {
     }
     
     typealias UIViewType = UIScrollView
-    typealias Coordinator = ScrollViewPresentCoordinator
+    typealias Coordinator = ScrollViewPresentCoordinator<Content>
     
     func makeUIView(context: Context) -> UIViewType {
-        let scroll = UIScrollView()
-        let child = context.coordinator.childView
-        scroll.showsHorizontalScrollIndicator = false
-        scroll.showsVerticalScrollIndicator = false
-        scroll.addSubview(child)
-        scroll.delegate = context.coordinator
-        scroll.zoomScale = 1
-        scroll.maximumZoomScale = 3
+        let coordinator = context.coordinator
+        let scroll = coordinator.scrollView
         return scroll
     }
     
-    func makeCoordinator() -> ScrollViewPresentCoordinator {
-        let c = ScrollViewPresentCoordinator(host: UIHostingController(rootView: content()))
+    func makeCoordinator() -> Coordinator {
+        let c = ScrollViewPresentCoordinator(contentAspectRatio: contentAspectRatio, content: content())
         return c
     }
     
@@ -56,47 +50,106 @@ struct ZoomView<Content: View>: UIViewRepresentable {
         if presenting == false {
             uiView.setZoomScale(1, animated: true)
         }
-    }
-    
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIScrollView, context: Context) -> CGSize? {
-        guard let width = proposal.width, let height = proposal.height else {
-            return nil
-        }
-        let size = CGSize(width: width, height: height)
-        uiView.contentSize = size
-        context.coordinator.updateSize(size: size, aspectRatio: contentAspectRatio)
-        return size
+        context.coordinator.contentAspectRatio = contentAspectRatio
     }
 }
 
-class ScrollViewPresentCoordinator: NSObject, UIScrollViewDelegate {
-    private let host: UIViewController
-    init(host: UIViewController) {
-        self.host = host
+fileprivate class ZoomViewScrollView: UIScrollView {
+    override var frame: CGRect {
+        get {
+            return super.frame
+        }
+        set {
+            let f = newValue
+            let old = super.frame
+            super.frame = f
+            if old.size != f.size {
+                frameDidChangedHandler()
+            }
+        }
     }
+    
+    var frameDidChangedHandler: () -> Void = {}
+}
+
+class ScrollViewPresentCoordinator<Content: View>: UIHostingController<Content>, UIScrollViewDelegate {
+    var contentAspectRatio: CGFloat
+    
+    init(contentAspectRatio: CGFloat, content: Content) {
+        self.contentAspectRatio = contentAspectRatio
+        super.init(rootView: content)
+    }
+    
+    @MainActor required dynamic init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    var scrollView: UIScrollView {
+        return myScrollView
+    }
+    private lazy var myScrollView: UIScrollView = {
+        let m = ZoomViewScrollView()
+        m.frameDidChangedHandler = { [weak self] in
+            self?.updateChildViewFrameIfNeed()
+        }
+        return m
+    }()
     
     var childView: UIView {
-        return host.view
+        return view
     }
     
-    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
-        return childView
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.addSubview(childView)
+        scrollView.delegate = self
+        scrollView.zoomScale = 1
+        scrollView.maximumZoomScale = 3
+        
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(doubleTapGesture))
+        tapGesture.numberOfTapsRequired = 2
+        scrollView.addGestureRecognizer(tapGesture)
     }
     
-    func updateSize(size: CGSize, aspectRatio: CGFloat) {
+    @objc func doubleTapGesture(_ tap: UITapGestureRecognizer) {
+        print("doubleTapGesture", tap)
+        if (scrollView.zoomScale > 1) {
+            scrollView.setZoomScale(1, animated: true)
+        } else if let imageV = self.viewForZooming(in: scrollView) {
+            let center = tap.location(in: tap.view)
+            var zoomRect = CGRect.zero
+            zoomRect.origin = imageV.convert(center, from: scrollView)
+            scrollView.zoom(to: zoomRect, animated: true)
+        }
+    }
+    
+    func updateChildViewFrameIfNeed() {
+        let scrollFrame = scrollView.frame
+        let size = scrollFrame.size
+        scrollView.contentSize = size
+        scrollView.zoomScale = 1
         let rate = size.width / size.height
         let scaledSize: CGSize
-        if rate > aspectRatio {
+        if rate > contentAspectRatio {
             let h = size.height
-            let w = h * aspectRatio
+            let w = h * contentAspectRatio
             scaledSize = CGSize(width: w, height: h)
         } else {
             let w = size.width
-            let h = w / aspectRatio
+            let h = w / contentAspectRatio
             scaledSize = CGSize(width: w, height: h)
         }
         childView.frame.size = scaledSize
         childView.frame.origin = .init(x: (size.width - scaledSize.width) / 2, y: (size.height - scaledSize.height) / 2)
+    }
+    
+    // MARK: UIScrollViewDelegate
+    
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+        return childView
     }
     
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
@@ -123,4 +176,3 @@ class ScrollViewPresentCoordinator: NSObject, UIScrollViewDelegate {
         }
     }
 }
-
