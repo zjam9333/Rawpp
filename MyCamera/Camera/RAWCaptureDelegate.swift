@@ -63,7 +63,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
         ciimg.settingProperties(photo.metadata)
         let option = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): 0.6]
-        compressedData = CIContext().heifRepresentation(of: ciimg, format: .BGRA8, colorSpace: CGColorSpace(name: CGColorSpace.displayP3)!, options: option)
+        compressedData = CIContext().heifRepresentation(of: ciimg, format: .BGRA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, options: option)
     }
     
     func savePhotoToAlbum() async {
