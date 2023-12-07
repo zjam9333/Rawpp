@@ -27,6 +27,8 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var showPhoto: Bool = false
     
     @Published var exposureMode = ExposureMode.auto
+    @Published var shutterTimer = ShutterTimer.zero
+    @Published var timerSeconds: TimerObject? = nil
     
     @Published var exposureValue: ExposureValue = .cachedExposureValue {
         didSet {
@@ -50,6 +52,8 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     private let feedbackGenerator = UISelectionFeedbackGenerator()
     var lastEVDragOffset: CGFloat = 0
+    
+    private var autoTimer: Timer?
     
     func touchFeedback() {
         feedbackGenerator.prepare()
@@ -142,6 +146,32 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     func capturePhoto() {
+        timerSeconds = nil
+        if shutterTimer.rawValue == 0 {
+            reallyCapture()
+            return
+        }
+        autoTimer?.invalidate()
+        let countingTime = shutterTimer.rawValue
+        timerSeconds = .init(startTime: Date(), value: countingTime - 0.1)
+        autoTimer = Timer(timeInterval: 0.1, repeats: true) { [weak self] t in
+            guard let timerSeconds = self?.timerSeconds else {
+                t.invalidate()
+                return
+            }
+            let now = Date()
+            let leftTime = countingTime - now.timeIntervalSince(timerSeconds.startTime)
+            self?.timerSeconds?.value = leftTime
+            if leftTime < 0 {
+                t.invalidate()
+                self?.timerSeconds = nil
+                self?.reallyCapture()
+            }
+        }
+        RunLoop.main.add(autoTimer!, forMode: .common)
+    }
+    
+    private func reallyCapture() {
         DispatchQueue.global().async { [self] in
             service.capturePhoto(rawOption: rawOption, location: lastLocation, flashMode: isFlashOn ? .on : .off)
         }
@@ -260,7 +290,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     private func startAcc() {
         motionManager.stopAccelerometerUpdates()
-        motionManager.accelerometerUpdateInterval = 1
+        motionManager.accelerometerUpdateInterval = 2
         motionManager.startAccelerometerUpdates(to: .main) { [weak self] dat, err in
             if let err = err {
                 print("startAccelerometerUpdates Err", err)

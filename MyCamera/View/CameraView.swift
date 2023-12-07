@@ -59,6 +59,24 @@ struct CameraView: View {
             Spacer()
             
             Button {
+                viewModel.touchFeedback()
+                viewModel.shutterTimer.toggleNext()
+            } label: {
+                let t = Int(viewModel.shutterTimer.rawValue)
+                HStack(spacing: 2) {
+                    Image(systemName: "timer")
+                        .font(.system(size: 20))
+                        .accentColor(t > 0 ? .yellow : .white)
+                    if t > 0 {
+                        Text("\(t)")
+                            .font(.system(size: 12))
+                            .foregroundColor(.yellow)
+                    }
+                }
+            }
+            
+            Button {
+                viewModel.touchFeedback()
                 switch viewModel.exposureMode {
                 case .auto:
                     viewModel.exposureMode = .manual
@@ -160,6 +178,18 @@ struct CameraView: View {
                 .animation(viewModel.showingEVIndicators ? .default : .default.delay(1), value: viewModel.showingEVIndicators)
                 
                 gestureContainer(size: geo.size)
+                
+                if let timer = viewModel.timerSeconds {
+                    let seconds = Int(timer.value) + 1
+                    Circle()
+                        .foregroundColor(.black.opacity(0.5))
+                        .frame(width: 100, height: 100, alignment: .center)
+                        .overlay(alignment: .center) {
+                            Text("\(seconds)")
+                                .foregroundColor(.white)
+                                .font(.system(size: 72))
+                        }
+                }
             }
         }
         .frame(width: UIScreen.main.bounds.size.width, height: UIScreen.main.bounds.size.width * 4 / 3)
@@ -271,6 +301,17 @@ struct CameraView: View {
                     }
                 //                                .animation(.default, value: viewModel.exposureValue)
             }
+        }
+    }
+    
+    @ViewBuilder func strokeText(text: String, radius: CGFloat, borderColor: Color) -> some View {
+        ZStack{
+            ZStack{
+                Text(text).offset(x:  radius, y:  radius)
+                Text(text).offset(x: -radius, y: -radius)
+            }
+            .foregroundColor(borderColor)
+            Text(text)
         }
     }
     

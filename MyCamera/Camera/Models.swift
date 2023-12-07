@@ -208,6 +208,38 @@ struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible {
     }()
 }
 
+struct ShutterTimer {
+    let rawValue: TimeInterval
+    private init(rawValue: TimeInterval) {
+        self.rawValue = rawValue
+    }
+    
+    static let zero: ShutterTimer = .init(rawValue: 0)
+    
+    var next: ShutterTimer {
+        let r = rawValue
+        if r >= 10 {
+            return .init(rawValue: 0)
+        }
+        if r >= 5 {
+            return .init(rawValue: 10)
+        }
+        if r >= 2 {
+            return .init(rawValue: 5)
+        }
+        return .init(rawValue: 2)
+    }
+    
+    mutating func toggleNext() {
+        self = next
+    }
+}
+
+struct TimerObject {
+    let startTime: Date
+    var value: TimeInterval
+}
+
 extension AVCaptureVideoOrientation {
     var isLandscape: Bool {
         return self == .landscapeLeft || self == .landscapeRight
