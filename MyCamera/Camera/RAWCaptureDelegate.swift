@@ -55,15 +55,15 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
         rawData = photoData
         // 优先使用raw转的jpeg data，避免苹果默认的处理
-        guard let rawFilter = CIRAWFilter(imageData: photoData, identifierHint: "raw") else {
+        let customProperties = SharedRawFilterProperties()
+        guard let rawFilter = customProperties.customizedRawFilter(photoData: photoData) else {
             return
         }
         guard let ciimg = rawFilter.outputImage else {
             return
         }
         ciimg.settingProperties(photo.metadata)
-        let option = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): 0.6]
-        compressedData = CIContext().heifRepresentation(of: ciimg, format: .BGRA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, options: option)
+        compressedData = customProperties.heifData(ciimage: ciimg)
     }
     
     func savePhotoToAlbum() async {
@@ -79,7 +79,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
         
         if let photoData = compressedData ?? rawData {
-            didFinish(Photo(data: photoData))
+            didFinish(Photo(data: photoData, raw: rawData))
         } else {
             didFinish(nil)
         }

@@ -254,21 +254,15 @@ class CameraService {
         }
         
         let rawFormat = photoOutput.availableRawPhotoPixelFormatTypes.first { code in
-//            if photoOutput.isAppleProRAWEnabled {
-//                return AVCapturePhotoOutput.isAppleProRAWPixelFormat(code)
-//            }
             return AVCapturePhotoOutput.isBayerRAWPixelFormat(code)
         }
         
         let photoSettings: AVCapturePhotoSettings
-        let processedFormat = [AVVideoCodecKey: AVVideoCodecType.hevc]
         
-        var rawOption = rawOption
         if let rawFormat = rawFormat {
             photoSettings = AVCapturePhotoSettings(rawPixelFormatType: rawFormat)
         } else {
-            photoSettings = AVCapturePhotoSettings(format: processedFormat)
-            rawOption = .heif
+            photoSettings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.hevc])
         }
         
         if let location = location {
@@ -282,16 +276,26 @@ class CameraService {
             photoSettings.flashMode = flashMode
         }
         
-        // Create a delegate to monitor the capture process.
-        let delegate = RAWCaptureDelegate(option: rawOption) { [weak self] phot in
-            self?.inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = nil
-            DispatchQueue.main.async {
-                self?.photo = phot
+        Task {
+            let photo = await self.capturePhoto(photoSettings: photoSettings, rawOption: rawOption)
+            await MainActor.run {
+                self.photo = photo
             }
         }
-        inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = delegate
-        
-        // Tell the output to capture the photo.
-        photoOutput.capturePhoto(with: photoSettings, delegate: delegate)
+    }
+    
+    private func capturePhoto(photoSettings: AVCapturePhotoSettings, rawOption: RAWSaveOption) async -> Photo? {
+        let photo = await withCheckedContinuation { con in
+            // Create a delegate to monitor the capture process.
+            let delegate = RAWCaptureDelegate(option: rawOption) { phot in
+                con.resume(returning: phot)
+            }
+            inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = delegate
+            
+            // Tell the output to capture the photo.
+            photoOutput.capturePhoto(with: photoSettings, delegate: delegate)
+        }
+        self.inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = nil
+        return photo
     }
 }

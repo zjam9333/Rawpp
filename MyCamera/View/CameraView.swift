@@ -24,6 +24,12 @@ struct CameraView: View {
         .fullScreenCover(isPresented: $viewModel.showPhoto) {
             PhotoReview(photos: viewModel.photos, presenting: $viewModel.showPhoto)
         }
+        .sheet(isPresented: $viewModel.showSetting) {
+            let raw = viewModel.photos.first  { p in
+                return p.raw != nil
+            }?.raw
+            SettingView(rawImage: raw, presenting: $viewModel.showSetting)
+        }
         .onAppear {
             viewModel.configure()
         }
@@ -166,8 +172,8 @@ struct CameraView: View {
                         }
                         .opacity(viewModel.showingEVIndicators ? 1 : 0)
                     case .manual:
-                        Text(String(format: "ISO %.0f SS %@", viewModel.ISO.floatValue, viewModel.shutterSpeed.description))
-                            .font(.system(size: 12))
+                        Text(String(format: "iso %.0f ss %@", viewModel.ISO.floatValue, viewModel.shutterSpeed.description))
+                            .font(.system(size: 24))
                             .foregroundColor(.white)
                             .padding(10)
                             .background(Color.black.opacity(0.5))
@@ -274,6 +280,10 @@ struct CameraView: View {
             }
             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             .padding(10)
+            .clipShape(Rectangle())
+            .onTapGesture {
+                viewModel.showSetting = true
+            }
         }
     }
     

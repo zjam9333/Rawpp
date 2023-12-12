@@ -6,6 +6,20 @@
 //
 
 import AVFoundation
+import CoreImage
+
+private let log = true
+
+/// 覆盖print
+func print(_ items: Any..., separator: String = " ") {
+    guard log else {
+        return
+    }
+    let str = items.map { any in
+        return String(describing: any)
+    }.joined(separator: separator)
+    Swift.print(str)
+}
 
 struct Photo: Identifiable, Equatable {
     static func == (lhs: Photo, rhs: Photo) -> Bool {
@@ -13,13 +27,16 @@ struct Photo: Identifiable, Equatable {
     }
     
     //    The ID of the captured photo
-    var id: String
+    let id: String
     //    Data representation of the captured photo
-    var data: Data
     
-    init(id: String = UUID().uuidString, data: Data) {
+    let data: Data
+    let raw: Data?
+    
+    init(id: String = UUID().uuidString, data: Data, raw: Data?) {
         self.id = id
         self.data = data
+        self.raw = raw
     }
 }
 
@@ -188,7 +205,6 @@ struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible {
         // MARK: iphone不支持慢速快门
         //let ints = [-2, -4, -8, -15, -30, -60, -125, -250, -500, -1000, -4000]
         let ints: [UInt] = [
-            2,
             3, 4, 5,
             6, 8, 10,
             12, 15, 20,
@@ -199,7 +215,7 @@ struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible {
             400, 500, 640,
             800, 1000, 1280,
             1600, 2000, 2500,
-            3200, 4000,
+            3200, 4000, 8000,
         ]
         let pres = ints.map { t in
             return ShutterSpeed(rawValue: t)
@@ -243,5 +259,108 @@ struct TimerObject {
 extension AVCaptureVideoOrientation {
     var isLandscape: Bool {
         return self == .landscapeLeft || self == .landscapeRight
+    }
+}
+
+struct CustomizeValue<Value> where Value: Comparable {
+    
+    let name: String
+    let `default`: Value
+    let minValue: Value
+    let maxValue: Value
+    var value: Value {
+        didSet {
+            cachedValue = value
+        }
+    }
+    
+    init(name: String, default: Value, minValue: Value, maxValue: Value) {
+        self.name = name
+        self.default = `default`
+        self.minValue = minValue
+        self.maxValue = maxValue
+        self.value = UserDefaults.standard.value(forKey: "CustomizeValue_\(name)") as? Value ?? `default`
+    }
+    
+    private var getCacheKey: String {
+        return "CustomizeValue_\(name)"
+    }
+    
+    private var cachedValue: Value {
+        set {
+            if newValue >= minValue && newValue <= maxValue {
+                UserDefaults.standard.setValue(newValue, forKey: getCacheKey)
+            }
+        }
+        get {
+            let g = UserDefaults.standard.value(forKey: getCacheKey) as? Value
+            return g ?? `default`
+        }
+    }
+}
+
+struct SharedRawFilterProperties {
+    typealias Value = Float
+    
+    var exposure = CustomizeValue<Value>(name: "RawFilterProperties_exposure", default: 0, minValue: 0, maxValue: 1)
+    
+    var baselineExposure = CustomizeValue<Value>(name: "RawFilterProperties_baselineExposure", default: 0, minValue: 0, maxValue: 1)
+    
+    var shadowBias = CustomizeValue<Value>(name: "RawFilterProperties_shadowBias", default: 0, minValue: 0, maxValue: 1)
+    
+    var boostAmount = CustomizeValue<Value>(name: "RawFilterProperties_boostAmount", default: 0.5, minValue: 0, maxValue: 1)
+    
+    var boostShadowAmount = CustomizeValue<Value>(name: "RawFilterProperties_boostShadowAmount", default: 0, minValue: 0, maxValue: 2)
+    
+    var extendedDynamicRangeAmount = CustomizeValue<Value>(name: "RawFilterProperties_extendedDynamicRangeAmount", default: 0, minValue: 0, maxValue: 2)
+    
+    var luminanceNoiseReductionAmount = CustomizeValue<Value>(name: "RawFilterProperties_luminanceNoiseReductionAmount", default: 0, minValue: 0, maxValue: 1)
+    
+    var colorNoiseReductionAmount = CustomizeValue<Value>(name: "RawFilterProperties_colorNoiseReductionAmount", default: 0, minValue: 0, maxValue: 1)
+    
+    var detailAmount = CustomizeValue<Value>(name: "RawFilterProperties_detailAmount", default: 0, minValue: 0, maxValue: 3)
+    
+    var moireReductionAmount = CustomizeValue<Value>(name: "RawFilterProperties_moireReductionAmount", default: 0, minValue: 0, maxValue: 1)
+    
+    var localToneMapAmount = CustomizeValue<Value>(name: "RawFilterProperties_localToneMapAmount", default: 0, minValue: 0, maxValue: 1)
+    
+    var heifLossyCompressionQuality = CustomizeValue<Value>(name: "RawFilterProperties_heifLossyCompressionQuality", default: 0.6, minValue: 0.1, maxValue: 1)
+    
+    func customizedRawFilter(photoData: Data) -> CIRAWFilter? {
+        guard let filter = CIRAWFilter(imageData: photoData, identifierHint: "raw") else {
+            return nil
+        }
+        filter.exposure = exposure.value
+        filter.baselineExposure = baselineExposure.value
+        filter.shadowBias = shadowBias.value
+        filter.boostAmount = boostAmount.value
+        filter.boostShadowAmount = boostShadowAmount.value
+        filter.extendedDynamicRangeAmount = extendedDynamicRangeAmount.value
+        filter.isGamutMappingEnabled = false
+        if filter.isLensCorrectionSupported {
+            filter.isLensCorrectionEnabled = true
+        }
+        if filter.isLuminanceNoiseReductionSupported {
+            filter.luminanceNoiseReductionAmount = luminanceNoiseReductionAmount.value
+        }
+        if filter.isColorNoiseReductionSupported {
+            filter.colorNoiseReductionAmount = colorNoiseReductionAmount.value
+        }
+        if filter.isDetailSupported {
+            filter.detailAmount = detailAmount.value
+        }
+        if filter.isMoireReductionSupported {
+            filter.moireReductionAmount = moireReductionAmount.value
+        }
+        if filter.isLocalToneMapSupported {
+            filter.localToneMapAmount = localToneMapAmount.value
+        }
+        return filter
+    }
+    
+    func heifData(ciimage: CIImage) -> Data? {
+        let option = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): heifLossyCompressionQuality.value]
+        let heic = CIContext().heifRepresentation(of: ciimage, format: .BGRA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, options: option)
+        return heic
     }
 }

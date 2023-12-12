@@ -25,6 +25,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
     @Published var showPhoto: Bool = false
+    @Published var showSetting: Bool = false
     
     @Published var exposureMode = ExposureMode.auto
     @Published var shutterTimer = ShutterTimer.zero

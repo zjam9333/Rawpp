@@ -7,19 +7,6 @@
 
 import SwiftUI
 
-private let log = true
-
-/// 覆盖print
-private func print(_ items: Any..., separator: String = " ") {
-    guard log else {
-        return
-    }
-    let str = items.map { any in
-        return String(describing: any)
-    }.joined(separator: separator)
-    Swift.print(str)
-}
-
 struct ZoomView<Content: View>: UIViewRepresentable {
     let presenting: Bool
     let contentAspectRatio: CGFloat

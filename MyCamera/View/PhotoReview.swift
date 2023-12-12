@@ -33,20 +33,19 @@ struct PhotoReview: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
         }
-        .overlay(alignment: .topTrailing) {
-            HStack {
-                Spacer()
+        .overlay(alignment: .bottom) {
+            Group {
                 Button {
                     presenting = false
                 } label: {
                     Text("Close")
                         .foregroundStyle(.white)
                         .padding(10)
+                        .frame(width: 280, height: 44)
                         .background(.gray)
-                        .clipShape(Capsule(style: .circular))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
             }
-            .frame(height: 44)
             .padding()
         }
     }
