@@ -200,6 +200,30 @@ struct CameraView: View {
                                 .foregroundColor(.white)
                                 .font(.system(size: 72))
                         }
+                } 
+                if viewModel.allCameras.count > 1 {
+                    Color.clear.overlay(alignment: .bottom) {
+                        HStack(spacing: 4) {
+                            ForEach(viewModel.allCameras) { i in
+                                Button {
+                                    viewModel.touchFeedback()
+                                    i.selectionHandler()
+                                } label: {
+                                    Capsule(style: .circular)
+                                        .fill(.gray.opacity(i.isSelected ? 1 : 0))
+                                        .frame(width: 36, height: 30, alignment: .center)
+                                        .overlay {
+                                            Text(i.title)
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.white)
+                                        }
+                                }
+                            }
+                        }
+                        .padding(4)
+                        .background(Capsule(style: .circular).fill(.gray.opacity(0.5)))
+                        .padding()
+                    }
                 }
             }
         }
@@ -245,28 +269,7 @@ struct CameraView: View {
             }
         }
         .overlay(alignment: .trailing) {
-            let cameraLens: String = {
-                switch (viewModel.cameraLens) {
-                case .builtInWideAngleCamera:
-                    return "WideAngle"
-                case .builtInUltraWideCamera:
-                    return "UltraWide"
-                case .builtInTelephotoCamera:
-                    return "Telephoto"
-                default:
-                    return viewModel.cameraLens.rawValue
-                }
-            }()
-            let cameraPosition: String = {
-                switch (viewModel.cameraPosition) {
-                case .back:
-                    return "Back"
-                case .front:
-                    return "Front"
-                default:
-                    return "Unknown"
-                }
-            }()
+            
             VStack(alignment: .trailing, spacing: 8) {
                 switch viewModel.exposureMode {
                 case .auto:
@@ -278,10 +281,22 @@ struct CameraView: View {
                     Text("SS \(viewModel.shutterSpeed.description)").font(.system(size: 12))
                         .foregroundColor(.white)
                 }
-                
-                Text("\(cameraPosition) \(cameraLens)")
-                    .font(.system(size: 12))
-                    .foregroundColor(.white)
+                if let camera = viewModel.currentCamera {
+                    let cameraLens = String(format: camera.magnification >= 1 ? "x%.0f" : "x%.01f", camera.magnification)
+                    let cameraPosition: String = {
+                        switch (camera.device.position) {
+                        case .back:
+                            return "Back"
+                        case .front:
+                            return "Front"
+                        default:
+                            return "Unknown"
+                        }
+                    }()
+                    Text("\(cameraPosition) \(cameraLens)")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white)
+                }
             }
             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             .padding(10)
@@ -395,12 +410,6 @@ struct CameraView: View {
         .onTapGesture {
             viewModel.focus(pointOfInterest: .init(x: 0.5, y: 0.5))
         }
-        .gesture(
-            MagnificationGesture()
-                .onEnded { amount in
-                    viewModel.changeCamera(step: amount > 1 ? 1 : -1)
-                }
-        )
         .frame(width: viewModel.videoOrientation.isLandscape ? size.height : size.width, height: viewModel.videoOrientation.isLandscape ? size.width : size.height)
         .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
         .frame(width: size.width, height: size.height)

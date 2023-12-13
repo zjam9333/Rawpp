@@ -22,6 +22,12 @@ func print(_ items: Any..., separator: String = " ") {
     Swift.print(str)
 }
 
+enum SessionSetupResult {
+    case success
+    case configurationFailed
+    case notAuthorized
+}
+
 struct Photo: Identifiable, Equatable {
     static func == (lhs: Photo, rhs: Photo) -> Bool {
         return lhs.id == rhs.id
@@ -420,3 +426,17 @@ struct RawFilterProperties {
         return heic
     }
 }
+
+struct CameraDevice {
+    let device: AVCaptureDevice
+    let fov: Float
+    var magnification: Float = 1
+}
+
+struct SelectItem: Identifiable {
+    let id = UUID()
+    let isSelected: Bool
+    let title: String
+    let selectionHandler: () -> Void
+}
+

@@ -18,17 +18,43 @@ class CameraService {
         case notAuthorized
     }
     
-    let usingDeviceTypes: [AVCaptureDevice.DeviceType] = [.builtInUltraWideCamera, .builtInWideAngleCamera, .builtInTelephotoCamera]
+    init() {
+        let usingDeviceTypes: [AVCaptureDevice.DeviceType] = [.builtInUltraWideCamera, .builtInWideAngleCamera, .builtInTelephotoCamera]
+        
+        let deviceDiscoveries: [AVCaptureDevice.Position: AVCaptureDevice.DiscoverySession] = [
+            .back: AVCaptureDevice.DiscoverySession(deviceTypes: usingDeviceTypes, mediaType: .video, position: .back),
+            .front: AVCaptureDevice.DiscoverySession(deviceTypes: usingDeviceTypes, mediaType: .video, position: .front)
+        ]
+        allCameras = deviceDiscoveries.compactMapValues { session in
+            let des = session.devices
+            var devices = des.map { d in
+                let format = d.activeFormat
+                print("Device Found", d, format)
+                return CameraDevice(device: d, fov: format.videoFieldOfView)
+            }
+            let oneAng = devices.first { d in
+                return d.device.deviceType == .builtInWideAngleCamera
+            }?.fov ?? 60
+            devices = devices.map { d in
+                var d = d
+                if d.fov <= 0 {
+                    return d
+                }
+                d.magnification = oneAng / d.fov
+                return d
+            }
+            return devices
+        }
+        currentCamera = allCameras[.back]?.first { d in
+            return d.device.deviceType == .builtInWideAngleCamera
+        }
+    }
     
-    lazy var deviceDiscoveries: [AVCaptureDevice.Position: AVCaptureDevice.DiscoverySession] = [
-        .back: AVCaptureDevice.DiscoverySession(deviceTypes: usingDeviceTypes, mediaType: .video, position: .back),
-        .front: AVCaptureDevice.DiscoverySession(deviceTypes: usingDeviceTypes, mediaType: .video, position: .front)
-    ]
+    @Published var allCameras: [AVCaptureDevice.Position: [CameraDevice]] = [:]
     
     @Published var shouldShowAlertView = false
     @Published var photo: Photo?
-    @Published var cameraPosition = AVCaptureDevice.Position.back
-    @Published var cameraLens = AVCaptureDevice.DeviceType.builtInWideAngleCamera
+    @Published var currentCamera: CameraDevice?
     
     var alertError: AlertError = AlertError()
     
@@ -68,60 +94,25 @@ class CameraService {
         }
     }
     
-    private func firstDevice(position: AVCaptureDevice.Position, deviceType:  AVCaptureDevice.DeviceType) -> AVCaptureDevice? {
-        let device = deviceDiscoveries[position]?.devices.first { dev in
-            return dev.deviceType == deviceType
-        }
-        return device
-    }
-    
-    func changeCamera(step: Int = 1) {
+    func selectedCamera(_ camera: CameraDevice) {
         session.beginConfiguration()
-        
-        func nextLen(current: AVCaptureDevice.DeviceType, step: Int) -> AVCaptureDevice.DeviceType? {
-            let firIndex = usingDeviceTypes.firstIndex(of: current)
-            guard let firIndex = firIndex else {
-                return nil
-            }
-            let nex = firIndex + (step > 0 ? 1 : -1)
-            if nex >= usingDeviceTypes.count {
-                return nil
-            } else if nex < 0 {
-                return nil
-            }
-            return usingDeviceTypes[nex]
-        }
-        let old = cameraLens
-        var nex = old
-        while true {
-            let tryNex = nextLen(current: nex, step: step)
-            guard let tryNex = tryNex else {
-                break
-            }
-            nex = tryNex
-            if nex == old {
-                break
-            }
-            if let device = firstDevice(position: cameraPosition, deviceType: nex) {
-                cameraLens = nex
-                addCameraDeviceInput(device: device)
-                break
-            }
-        }
-        
+        currentCamera = camera
+        addCameraDeviceInput(device: camera.device)
         session.commitConfiguration()
     }
     
     func toggleFrontCamera() {
         session.beginConfiguration()
-        if cameraPosition == .front {
+        let cameraPosition: AVCaptureDevice.Position
+        if currentCamera?.device.position == .front {
             cameraPosition = .back
         } else {
             cameraPosition = .front
         }
-        cameraLens = .builtInWideAngleCamera
-        let device = firstDevice(position: cameraPosition, deviceType: cameraLens)
-        addCameraDeviceInput(device: device)
+        currentCamera = allCameras[cameraPosition]?.first { dev in
+            return dev.device.deviceType == .builtInWideAngleCamera
+        }
+        addCameraDeviceInput(device: currentCamera?.device)
         session.commitConfiguration()
     }
     
@@ -132,8 +123,10 @@ class CameraService {
         session.beginConfiguration()
         session.sessionPreset = .photo
         
-        let device = firstDevice(position: cameraPosition, deviceType: cameraLens)
-        addCameraDeviceInput(device: device)
+        currentCamera = allCameras[.back]?.first { dev in
+            return dev.device.deviceType == .builtInWideAngleCamera
+        }
+        addCameraDeviceInput(device: currentCamera?.device)
         
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)

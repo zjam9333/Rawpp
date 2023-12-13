@@ -45,8 +45,9 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     @Published var videoOrientation: AVCaptureVideoOrientation = .portrait
     
-    @Published var cameraPosition = AVCaptureDevice.Position.back
-    @Published var cameraLens = AVCaptureDevice.DeviceType.builtInWideAngleCamera
+    @Published var currentCamera: CameraDevice?
+    
+    @Published var allCameras: [SelectItem] = []
     
     @Published var showingEVIndicators = false
     @Published var isAppInBackground = false
@@ -107,13 +108,20 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         .store(in: &self.subscriptions)
         
-        service.$cameraLens.receive(on: DispatchQueue.main).sink { [weak self] ca in
-            self?.cameraLens = ca
-        }
-        .store(in: &self.subscriptions)
-        
-        service.$cameraPosition.receive(on: DispatchQueue.main).sink { [weak self] ca in
-            self?.cameraPosition = ca
+        service.$allCameras.combineLatest(service.$currentCamera).receive(on: DispatchQueue.main).sink { [weak self] ca, ca2 in
+            let currentDevice = ca2
+            self?.currentCamera = ca2
+            self?.allCameras = ca[currentDevice?.device.position ?? .back]?.map { d in
+                let title = String(format: d.magnification >= 1 ? "x%.0f" : "x%.01f", d.magnification)
+                let selected = currentDevice?.device == d.device
+                let r = SelectItem(isSelected: selected, title: title) {
+                    DispatchQueue.global().async {
+                        self?.service.selectedCamera(d)
+                        self?.setExposure()
+                    }
+                }
+                return r
+            } ?? []
         }
         .store(in: &self.subscriptions)
         
@@ -179,13 +187,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         self.isCapturing = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.isCapturing = false
-        }
-    }
-    
-    func changeCamera(step: Int) {
-        DispatchQueue.global().async { [self] in
-            service.changeCamera(step: step)
-            setExposure()
         }
     }
     
