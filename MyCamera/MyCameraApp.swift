@@ -12,6 +12,9 @@ struct MyCameraApp: App {
     var body: some Scene {
         WindowGroup {
             CameraView()
+                .onAppear {
+                    print(CommandLine.arguments)
+                }
         }
     }
 }

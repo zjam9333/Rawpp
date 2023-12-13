@@ -153,6 +153,11 @@ struct CameraView: View {
                             Color(.black).opacity(0.5)
                         }
                     }
+                    .overlay {
+                        if CommandLine.arguments.contains("IS_XCODE_DEBUGGING") {
+                            Color.black.opacity(0.9)
+                        }
+                    }
             
                 Group {
                     Group {

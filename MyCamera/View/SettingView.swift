@@ -20,32 +20,42 @@ struct SettingView: View {
 //    @State private var rawToUIImage: UIImage?
     @State private var outputUIImage: UIImage?
     
-    @State private var rawProperties = SharedRawFilterProperties()
+    @State private var sharedPropertyies = RawFilterProperties()
     
     var body: some View {
         NavigationView {
             VStack {
                 previewView
                 List {
-                    Section("Basic") {
-                        sliderCell(title: "Boost", property: $rawProperties.boostAmount)
-                        sliderCell(title: "Boost Shadow", property: $rawProperties.boostShadowAmount)
-                        sliderCell(title: "Exposure", property: $rawProperties.exposure)
-                        sliderCell(title: "Baseline", property: $rawProperties.baselineExposure)
-                        sliderCell(title: "Shadow Bias", property: $rawProperties.shadowBias)
-                        sliderCell(title: "Local Tone", property: $rawProperties.localToneMapAmount)
-                        sliderCell(title: "Extended Dynamic Range", property: $rawProperties.extendedDynamicRangeAmount)
+                    Section("Output") {
+                        sliderCell(title: "Heif Quality", property: $sharedPropertyies.output.heifLossyCompressionQuality)
                     }
-                    
-                    Section("Heif") {
-                        sliderCell(title: "Heif Quality", property: $rawProperties.heifLossyCompressionQuality)
+                    Section("Post Progress") {
+                        /*
+                        sliderCell(title: "Vibrance", property: $sharedPropertyies.post.vibrance)
+                         */
+                        sliderCell(title: "Curve Point 0", property: $sharedPropertyies.post.curvePoint0)
+                        sliderCell(title: "Curve Point 1", property: $sharedPropertyies.post.curvePoint1)
+                        sliderCell(title: "Curve Point 2", property: $sharedPropertyies.post.curvePoint2)
+                        sliderCell(title: "Curve Point 3", property: $sharedPropertyies.post.curvePoint3)
+                        sliderCell(title: "Curve Point 4", property: $sharedPropertyies.post.curvePoint4)
                     }
-                    
-                    Section("Detail") {
-                        sliderCell(title: "Detail", property: $rawProperties.detailAmount)
-                        sliderCell(title: "Color Noise Reduction", property: $rawProperties.colorNoiseReductionAmount)
-                        sliderCell(title: "Luminance Noise Reduction", property: $rawProperties.luminanceNoiseReductionAmount)
-                        sliderCell(title: "Moire Reduction", property: $rawProperties.moireReductionAmount)
+                    Section("Raw Filter") {
+                        sliderCell(title: "Boost", property: $sharedPropertyies.raw.boostAmount)
+                        /*
+                        sliderCell(title: "Boost Shadow", property: $sharedPropertyies.raw.boostShadowAmount)
+                        sliderCell(title: "Exposure", property: $sharedPropertyies.raw.exposure)
+                        sliderCell(title: "Baseline", property: $sharedPropertyies.raw.baselineExposure)
+                        sliderCell(title: "Shadow Bias", property: $sharedPropertyies.raw.shadowBias)
+                        sliderCell(title: "Local Tone", property: $sharedPropertyies.raw.localToneMapAmount)
+                        sliderCell(title: "Extended Dynamic Range", property: $sharedPropertyies.raw.extendedDynamicRangeAmount)
+                        sliderCell(title: "Detail", property: $sharedPropertyies.raw.detailAmount)
+                        sliderCell(title: "Sharpness", property: $sharedPropertyies.raw.sharpnessAmount)
+                        sliderCell(title: "Contrast", property: $sharedPropertyies.raw.contrastAmount)
+                        sliderCell(title: "Color Noise Reduction", property: $sharedPropertyies.raw.colorNoiseReductionAmount)
+                        sliderCell(title: "Luminance Noise Reduction", property: $sharedPropertyies.raw.luminanceNoiseReductionAmount)
+                        sliderCell(title: "Moire Reduction", property: $sharedPropertyies.raw.moireReductionAmount)
+                         */
                     }
                 }
                 .listStyle(.plain)
@@ -57,31 +67,18 @@ struct SettingView: View {
         .onAppear {
             Task {
 //                await createRawOriginalPreview()
-//                await createRawOutputPreview()
+                await createRawOutputPreview()
             }
         }
     }
     
     @ViewBuilder var previewView: some View {
         if let outputUIImage = outputUIImage {
-            let rate = outputUIImage.size.width / outputUIImage.size.height
-            ZoomView(presenting: true, contentAspectRatio: rate) {
-                Image(uiImage: outputUIImage)
-                    .resizable()
-            }
-            .id(UUID())
-            .frame(height: 250)
-            .overlay(alignment: .bottomLeading) {
-                Button {
-                    Task {
-                        await createRawOutputPreview()
-                    }
-                } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 20))
-                        .padding()
-                }
-            }
+            Image(uiImage: outputUIImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(height: 250)
+                .clipped()
         }
     }
     
@@ -89,20 +86,33 @@ struct SettingView: View {
         let old = property.wrappedValue
         HStack(alignment: .center) {
             VStack(alignment: .leading) {
-                Text("\(title))")
+                Text("\(title)")
                     .font(.system(size: 13))
                 Text(String(format: "%.02f", property.value.wrappedValue))
                     .font(.system(size: 13))
                     .foregroundColor(.yellow)
             }
+            .gesture(
+                TapGesture(count: 2).onEnded { t in
+                    property.wrappedValue.value = property.wrappedValue.default
+                }
+            )
             
             Spacer()
             
-            Slider(value: .init(get: {
+            let bi = Binding<Float> {
                 return property.wrappedValue.value
-            }, set: { ne in
+            } set: { ne in
                 property.wrappedValue.value = ne
-            }), in: old.minValue...old.maxValue)
+            }
+            Slider(value: bi, in: old.minValue...old.maxValue) {
+                Text(")")
+            } onEditingChanged: { i in
+                Task {
+                    await createRawOutputPreview()
+                }
+            }
+            .accentColor(.yellow)
             .frame(width: 200)
         }
     }
@@ -122,7 +132,7 @@ struct SettingView: View {
         guard let rawData = rawImage else {
             return
         }
-        guard let filt = rawProperties.customizedRawFilter(photoData: rawData) else {
+        guard let filt = sharedPropertyies.customizedRawFilter(photoData: rawData) else {
             return
         }
         filt.isDraftModeEnabled = true
@@ -130,7 +140,10 @@ struct SettingView: View {
         guard let ciimg = filt.outputImage else {
             return
         }
-        let ddata = rawProperties.heifData(ciimage: ciimg)
+        guard let tonedCiimage = sharedPropertyies.toneCurvedImage(ciimage: ciimg) else {
+            return
+        }
+        let ddata = sharedPropertyies.heifData(ciimage: tonedCiimage)
         guard let ddata = ddata else {
             return
         }

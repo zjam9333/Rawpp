@@ -7,6 +7,7 @@
 
 import AVFoundation
 import Photos
+import CoreImage.CIFilterBuiltins
 
 class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     
@@ -55,7 +56,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
         rawData = photoData
         // 优先使用raw转的jpeg data，避免苹果默认的处理
-        let customProperties = SharedRawFilterProperties()
+        let customProperties = RawFilterProperties()
         guard let rawFilter = customProperties.customizedRawFilter(photoData: photoData) else {
             return
         }
@@ -63,7 +64,10 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             return
         }
         ciimg.settingProperties(photo.metadata)
-        compressedData = customProperties.heifData(ciimage: ciimg)
+        guard let tonedCiimage = customProperties.toneCurvedImage(ciimage: ciimg) else {
+            return
+        }
+        compressedData = customProperties.heifData(ciimage: tonedCiimage)
     }
     
     func savePhotoToAlbum() async {
