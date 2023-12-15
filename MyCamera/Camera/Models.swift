@@ -104,23 +104,6 @@ struct ExposureValue: Equatable, Hashable {
         }
         return Set(floats)
     }()
-    
-    static var cachedExposureValue: ExposureValue {
-        get {
-            guard let value = UserDefaults.standard.value(forKey: "CameraViewModelCachedExposureValue") as? Int else {
-                return .zero
-            }
-            let oldV = ExposureValue(rawValue: value)
-            guard presetExposureValues.contains(oldV) else {
-                return .zero
-            }
-            return oldV
-        }
-        set {
-            let value = newValue.rawValue
-            UserDefaults.standard.setValue(value, forKey: "CameraViewModelCachedExposureValue")
-        }
-    }
 }
 
 enum RAWSaveOption: Int {
@@ -440,3 +423,7 @@ struct SelectItem: Identifiable {
     let selectionHandler: () -> Void
 }
 
+enum Result<A, B> {
+    case success(A)
+    case failure(B)
+}

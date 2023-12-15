@@ -52,35 +52,30 @@ class CameraService {
     
     @Published var allCameras: [AVCaptureDevice.Position: [CameraDevice]] = [:]
     
-    @Published var shouldShowAlertView = false
-    @Published var photo: Photo?
     @Published var currentCamera: CameraDevice?
-    
-    var alertError: AlertError = AlertError()
     
     let session = AVCaptureSession()
     
-    private var setupResult: SessionSetupResult = .success
     private var videoDeviceInput: AVCaptureDeviceInput?
     private let photoOutput = AVCapturePhotoOutput()
     private var inProgressPhotoCaptureDelegates = [Int64: AVCapturePhotoCaptureDelegate]()
     
-    func checkForPermissions() {
+    func checkForPermissions() async -> SessionSetupResult {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            break
+            return .success
         case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                if !granted {
-                    self?.setupResult = .notAuthorized
-                }
+            let grand = await AVCaptureDevice.requestAccess(for: .video)
+            if grand {
+                return .success
             }
+            return .notAuthorized
         default:
-            setupResult = .notAuthorized
+            return .notAuthorized
         }
     }
     
-    private func addCameraDeviceInput(device: AVCaptureDevice?) {
+    private func addCameraDeviceInput(device: AVCaptureDevice?) async {
         if let old = videoDeviceInput {
             session.removeInput(old)
         }
@@ -94,78 +89,58 @@ class CameraService {
         }
     }
     
-    func selectedCamera(_ camera: CameraDevice) {
+    func selectedCamera(_ camera: CameraDevice) async {
         session.beginConfiguration()
         currentCamera = camera
-        addCameraDeviceInput(device: camera.device)
+        await addCameraDeviceInput(device: camera.device)
         session.commitConfiguration()
     }
     
-    func toggleFrontCamera() {
-        session.beginConfiguration()
+    func toggleFrontCamera() async {
         let cameraPosition: AVCaptureDevice.Position
         if currentCamera?.device.position == .front {
             cameraPosition = .back
         } else {
             cameraPosition = .front
         }
-        currentCamera = allCameras[cameraPosition]?.first { dev in
+        let c = allCameras[cameraPosition]?.first { dev in
             return dev.device.deviceType == .builtInWideAngleCamera
         }
-        addCameraDeviceInput(device: currentCamera?.device)
-        session.commitConfiguration()
+        if let c = c {
+            await selectedCamera(c)
+        }
     }
     
-    func configureSession() {
-        if setupResult != .success {
-            return
-        }
+    func configureSession() async {
         session.beginConfiguration()
         session.sessionPreset = .photo
         
         currentCamera = allCameras[.back]?.first { dev in
             return dev.device.deviceType == .builtInWideAngleCamera
         }
-        addCameraDeviceInput(device: currentCamera?.device)
+        await addCameraDeviceInput(device: currentCamera?.device)
         
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)
         } else {
             print("Could not add photo output to the session")
-            setupResult = .configurationFailed
             session.commitConfiguration()
             return
         }
         
         session.commitConfiguration()
-        
-        start()
-    }
-    
-    private func start() {
-        switch setupResult {
-        case .success:
-            if !session.isRunning {
-                session.startRunning()
-            }
-        default:
-            print("Application not authorized to use camera")
-            DispatchQueue.main.async {
-                self.alertError = AlertError(title: "Camera Error", message: "App doesn't have access to use your camera, please update your privacy settings.", primaryButtonTitle: "Go Settings", secondaryButtonTitle: "Cancel", primaryAction: {
-                    UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!, options: [:], completionHandler: nil)
-                }, secondaryAction: nil)
-                self.shouldShowAlertView = true
-            }
+        if !session.isRunning {
+            session.startRunning()
         }
     }
     
-    func orientationChanged(orientation: AVCaptureVideoOrientation) {
+    func orientationChanged(orientation: AVCaptureVideoOrientation) async {
         if let photoOutputConnection = photoOutput.connection(with: .video), photoOutputConnection.isVideoOrientationSupported {
             photoOutputConnection.videoOrientation = orientation
         }
     }
     
-    func focus(pointOfInterest: CGPoint) {
+    func focus(pointOfInterest: CGPoint) async {
         guard let device = videoDeviceInput?.device, device.isFocusPointOfInterestSupported else {
             return
         }
@@ -181,7 +156,7 @@ class CameraService {
         }
     }
     
-    func setExposureValue(_ bias: Float) {
+    func setExposureValue(_ bias: Float) async {
         guard let device = videoDeviceInput?.device else {
             return
         }
@@ -191,23 +166,21 @@ class CameraService {
         guard min < bias, bias < max else {
             return
         }
-        Task {
-            do {
-                try device.lockForConfiguration()
-                if device.isExposureModeSupported(.continuousAutoExposure) {
-                    device.exposureMode = .continuousAutoExposure
-                } else if device.isExposureModeSupported(.autoExpose) {
-                    device.exposureMode = .autoExpose
-                }
-                await device.setExposureTargetBias(bias)
-                device.unlockForConfiguration()
-            } catch {
-                
+        do {
+            try device.lockForConfiguration()
+            if device.isExposureModeSupported(.continuousAutoExposure) {
+                device.exposureMode = .continuousAutoExposure
+            } else if device.isExposureModeSupported(.autoExpose) {
+                device.exposureMode = .autoExpose
             }
+            await device.setExposureTargetBias(bias)
+            device.unlockForConfiguration()
+        } catch {
+            
         }
     }
     
-    func setCustomExposure(shutterSpeed: CMTime, iso: Float) {
+    func setCustomExposure(shutterSpeed: CMTime, iso: Float) async {
         guard let device = videoDeviceInput?.device else {
             return
         }
@@ -222,30 +195,22 @@ class CameraService {
         guard shutterRange.contains(shutterSpeed.seconds) else {
             return
         }
-        Task {
-            do {
-                try device.lockForConfiguration()
-                device.exposureMode = .custom
-                let usingTime = await device.setExposureModeCustom(duration: shutterSpeed, iso: iso)
-                print("pass", shutterSpeed, "using", usingTime)
-                device.unlockForConfiguration()
-            } catch {
-                
-            }
+        do {
+            try device.lockForConfiguration()
+            device.exposureMode = .custom
+            let usingTime = await device.setExposureModeCustom(duration: shutterSpeed, iso: iso)
+            print("pass", shutterSpeed, "using", usingTime)
+            device.unlockForConfiguration()
+        } catch {
+            
         }
     }
     
-    func capturePhoto(rawOption: RAWSaveOption, location: CLLocation?, flashMode: AVCaptureDevice.FlashMode) {
-        guard setupResult != .configurationFailed else {
-            return
-        }
-        
+    func capturePhoto(rawOption: RAWSaveOption, location: CLLocation?, flashMode: AVCaptureDevice.FlashMode) async -> Result<Photo?, AlertError> {
         guard let photoOutputConnection = photoOutput.connection(with: .video), photoOutputConnection.isActive, photoOutputConnection.isEnabled else {
-            alertError = AlertError(title: "Camera Error", message: "Simulator Camera Not Working", primaryButtonTitle: "OK", secondaryButtonTitle: nil, primaryAction: nil, secondaryAction: nil)
-            shouldShowAlertView = true
-            return
+            let err = AlertError(title: "Camera Error", message: "Camera Device is not Enabled", primaryButtonTitle: "OK", secondaryButtonTitle: "Cancel", primaryAction: nil, secondaryAction: nil)
+            return .failure(err)
         }
-        
         let rawFormat = photoOutput.availableRawPhotoPixelFormatTypes.first { code in
             return AVCapturePhotoOutput.isBayerRAWPixelFormat(code)
         }
@@ -269,12 +234,8 @@ class CameraService {
             photoSettings.flashMode = flashMode
         }
         
-        Task {
-            let photo = await self.capturePhoto(photoSettings: photoSettings, rawOption: rawOption)
-            await MainActor.run {
-                self.photo = photo
-            }
-        }
+        let photo = await self.capturePhoto(photoSettings: photoSettings, rawOption: rawOption)
+        return .success(photo)
     }
     
     private func capturePhoto(photoSettings: AVCapturePhotoSettings, rawOption: RAWSaveOption) async -> Photo? {

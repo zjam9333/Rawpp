@@ -33,10 +33,45 @@ struct CameraView: View {
         .onAppear {
             viewModel.configure()
         }
-        .alert(isPresented: $viewModel.showAlertError) {
-            Alert(title: Text(viewModel.alertError.title), message: Text(viewModel.alertError.message), primaryButton: .default(Text(viewModel.alertError.primaryButtonTitle), action: {
-                viewModel.alertError.primaryAction?()
-            }), secondaryButton: .cancel())
+        .overlay {
+            if let err = viewModel.alertError {
+                Color.black.opacity(0.3)
+                VStack(alignment: .center) {
+                    Text(err.title)
+                        .font(.title3)
+                        .padding(.bottom, 10)
+                        .padding(.top, 10)
+                    Text(err.message)
+                        .font(.body)
+                        .padding(.bottom, 10)
+                    Divider()
+                    HStack {
+                        Button {
+                            err.primaryAction?()
+                        } label: {
+                            Text(err.primaryButtonTitle)
+                                .font(.body)
+                        }
+                        .frame(minWidth: 0, maxWidth: .infinity)
+                        
+                        if let secondaryButtonTitle = err.secondaryButtonTitle {
+                            Button {
+                                err.secondaryAction?()
+                            } label: {
+                                Text(secondaryButtonTitle)
+                                    .font(.body)
+                            }
+                            .frame(minWidth: 0, maxWidth: .infinity)
+                        }
+                    }
+                    .frame(height: 44)
+                }
+                .foregroundColor(.black)
+                .padding(10)
+                .background(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .frame(width: 280)
+            }
         }
     }
     
@@ -149,13 +184,11 @@ struct CameraView: View {
                     .opacity(viewModel.isAppInBackground ? 0 : 1)
                     .animation(.default, value: viewModel.isAppInBackground)
                     .overlay {
-                        if viewModel.isCapturing {
-                            Color(.black).opacity(0.5)
-                        }
-                    }
-                    .overlay {
                         if CommandLine.arguments.contains("IS_XCODE_DEBUGGING") {
-                            Color.black.opacity(0.9)
+                            Color.black.opacity(0.8)
+                        }
+                        if viewModel.isCapturing {
+                            Color.black.opacity(0.5)
                         }
                     }
             
@@ -259,7 +292,7 @@ struct CameraView: View {
                 let buttonSiz: CGFloat = 74
                 let circleSiz = buttonSiz - 36
                 Circle()
-                    .foregroundColor(viewModel.isCapturing ? .gray : .white)
+                    .stroke(viewModel.isCapturing ? .gray : .white, lineWidth: 1)
                     .frame(width: buttonSiz, height: buttonSiz, alignment: .center)
                     .overlay(alignment: .center) {
                         Circle()

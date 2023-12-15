@@ -16,7 +16,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let service = CameraService()
     
     @Published var photos: [Photo] = []
-    @Published var showAlertError = false
+    @Published var alertError: AlertError?
     @Published var isFlashOn = false
     @Published var isCapturing = false
     @Published var rawOption: RAWSaveOption = .cachedRawOption {
@@ -27,19 +27,11 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var showPhoto: Bool = false
     @Published var showSetting: Bool = false
     
-    @Published var exposureMode = ExposureMode.auto
     @Published var shutterTimer = ShutterTimer.zero
     @Published var timerSeconds: TimerObject? = nil
     
-    @Published var exposureValue: ExposureValue = .cachedExposureValue {
-        didSet {
-            let range: ClosedRange<Float> = -1...1
-            if range.contains(exposureValue.floatValue) {
-                ExposureValue.cachedExposureValue = exposureValue
-            }
-        }
-    }
-    
+    @Published var exposureMode = ExposureMode.auto
+    @Published var exposureValue: ExposureValue = .zero
     @Published var shutterSpeed: ShutterSpeed = .percent100
     @Published var ISO: ISOValue = .iso100
     
@@ -60,10 +52,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     func touchFeedback() {
         feedbackGenerator.prepare()
         feedbackGenerator.selectionChanged()
-    }
-    
-    var alertError: AlertError {
-        self.service.alertError
     }
     
     var session: AVCaptureSession {
@@ -97,17 +85,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
         }.store(in: &subscriptions)
         
-        service.$photo.receive(on: DispatchQueue.main).sink { [weak self] (photo) in
-            guard let pic = photo else { return }
-            self?.photos.insert(pic, at: 0)
-        }
-        .store(in: &self.subscriptions)
-        
-        service.$shouldShowAlertView.receive(on: DispatchQueue.main).sink { [weak self] (val) in
-            self?.showAlertError = val
-        }
-        .store(in: &self.subscriptions)
-        
         service.$allCameras.combineLatest(service.$currentCamera).receive(on: DispatchQueue.main).sink { [weak self] ca, ca2 in
             let currentDevice = ca2
             self?.currentCamera = ca2
@@ -115,9 +92,12 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 let title = String(format: d.magnification >= 1 ? "x%.0f" : "x%.01f", d.magnification)
                 let selected = currentDevice?.device == d.device
                 let r = SelectItem(isSelected: selected, title: title) {
-                    DispatchQueue.global().async {
-                        self?.service.selectedCamera(d)
-                        self?.setExposure()
+                    guard let self = self else {
+                        return
+                    }
+                    Task {
+                        await self.service.selectedCamera(d)
+                        await self.setExposure()
                     }
                 }
                 return r
@@ -125,36 +105,53 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         .store(in: &self.subscriptions)
         
-        $exposureValue.receive(on: DispatchQueue.global()).sink { [weak self] _ in
-            self?.setExposure()
+        $exposureValue.combineLatest($exposureMode).combineLatest($ISO).combineLatest($shutterSpeed).receive(on: DispatchQueue.main).sink { [weak self] _ in
+            guard let self = self else {
+                return
+            }
+            Task {
+                await self.setExposure()
+            }
         }.store(in: &self.subscriptions)
         
-        $ISO.receive(on: DispatchQueue.global()).sink { [weak self] _ in
-            self?.setExposure()
-        }.store(in: &self.subscriptions)
-        
-        $shutterSpeed.receive(on: DispatchQueue.global()).sink { [weak self] _ in
-            self?.setExposure()
-        }.store(in: &self.subscriptions)
-        
-        $videoOrientation.receive(on: DispatchQueue.global()).sink { [weak self] ori in
-            self?.service.orientationChanged(orientation: ori)
+        $videoOrientation.receive(on: DispatchQueue.main).sink { [weak self] ori in
+            guard let self = self else {
+                return
+            }
+            Task {
+                await self.service.orientationChanged(orientation: ori)
+            }
         }.store(in: &self.subscriptions)
     }
     
     // MARK: Camera Service
     
     func configure() {
-        DispatchQueue.global().async { [self] in
-            service.checkForPermissions()
-            service.configureSession()
-            DispatchQueue.global().asyncAfter(deadline: .now() + 1) { [self] in
-                setExposure()
+        Task {
+            let succ = await service.checkForPermissions()
+            if succ == .success {
+                await service.configureSession()
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await setExposure()
+            } else {
+                await MainActor.run {
+                    self.alertError = AlertError(title: "Camera Error", message: "App doesn't have access to use your camera, please update your privacy settings.", primaryButtonTitle: "Go Settings", secondaryButtonTitle: "Cancel", primaryAction: {
+                        UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!, options: [:], completionHandler: nil)
+                    }, secondaryAction: nil)
+                }
             }
         }
     }
     
     func capturePhoto() {
+        @Sendable @MainActor func toggleIsCapturing() async {
+            self.isCapturing = true
+            try? await Task.sleep(nanoseconds: 0_100_000_000)
+            self.isCapturing = false
+        }
+        Task {
+            await toggleIsCapturing()
+        }
         timerSeconds = nil
         if shutterTimer.rawValue == 0 {
             reallyCapture()
@@ -181,19 +178,33 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     private func reallyCapture() {
-        DispatchQueue.global().async { [self] in
-            service.capturePhoto(rawOption: rawOption, location: lastLocation, flashMode: isFlashOn ? .on : .off)
-        }
-        self.isCapturing = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.isCapturing = false
+        
+        Task {
+            let result = await service.capturePhoto(rawOption: rawOption, location: lastLocation, flashMode: isFlashOn ? .on : .off)
+            switch result {
+            case .failure(let alert):
+                await MainActor.run {
+                    var alert = alert
+                    alert.primaryAction = { [weak self] in
+                        self?.alertError = nil
+                    }
+                    self.alertError = alert
+                }
+            case .success(let pic):
+                if let pic = pic {
+                    await MainActor.run {
+                        self.photos.insert(pic, at: 0)
+                    }
+                }
+            }
+            
         }
     }
     
     func toggleFrontCamera() {
-        DispatchQueue.global().async { [self] in
-            service.toggleFrontCamera()
-            setExposure()
+        Task {
+            await service.toggleFrontCamera()
+            await setExposure()
         }
     }
     
@@ -202,19 +213,17 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     func focus(pointOfInterest: CGPoint) {
-        DispatchQueue.global().async { [self] in
-            service.focus(pointOfInterest: pointOfInterest)
+        Task {
+            await service.focus(pointOfInterest: pointOfInterest)
         }
     }
     
-    private func setExposure() {
-        DispatchQueue.global().async { [self] in
-            switch exposureMode {
-            case .auto:
-                service.setExposureValue(exposureValue.floatValue)
-            case .manual:
-                service.setCustomExposure(shutterSpeed: shutterSpeed.cmTime, iso: ISO.floatValue)
-            }
+    private func setExposure() async {
+        switch exposureMode {
+        case .auto:
+            await service.setExposureValue(exposureValue.floatValue)
+        case .manual:
+            await service.setCustomExposure(shutterSpeed: shutterSpeed.cmTime, iso: ISO.floatValue)
         }
     }
     
