@@ -82,8 +82,8 @@ struct ExposureValue: Equatable, Hashable {
     
     static let zero = ExposureValue(rawValue: 0)
     
-    static let presetExposureValues: [ExposureValue] = {
-        let ints = integerValues.sorted { v1, v2 in
+    static let presets: [ExposureValue] = {
+        let ints = integers.sorted { v1, v2 in
             return v1.rawValue < v2.rawValue
         }
         var steps = [ExposureValue]()
@@ -98,7 +98,7 @@ struct ExposureValue: Equatable, Hashable {
         return steps
     }()
     
-    static let integerValues: Set<ExposureValue> = {
+    static let integers: Set<ExposureValue> = {
         let floats: [ExposureValue] = (-5...5).map { r in
             return ExposureValue(rawValue: r * 100)
         }
@@ -152,7 +152,7 @@ struct ISOValue: Equatable, Hashable {
     
     static let iso100: ISOValue = .init(rawValue: 100)
     
-    static let presetISOs: [ISOValue] = {
+    static let presets: [ISOValue] = {
         // step: 1/3 = 1.26
         let ints = [
             25, 32, 40,
@@ -168,6 +168,16 @@ struct ISOValue: Equatable, Hashable {
         }
         return pres
     }()
+    
+    static let integers: Set<ISOValue> = [
+        ISOValue(rawValue: 25),
+        ISOValue(rawValue: 50),
+        ISOValue(rawValue: 100),
+        ISOValue(rawValue: 200),
+        ISOValue(rawValue: 400),
+        ISOValue(rawValue: 800),
+        ISOValue(rawValue: 1600),
+    ]
 }
 
 struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible {
@@ -191,7 +201,7 @@ struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible {
     
     static let percent100: ShutterSpeed = .init(rawValue: 100)
     
-    static let presetShutterSpeeds: [ShutterSpeed] = {
+    static let presets: [ShutterSpeed] = {
         // MARK: iphone不支持慢速快门
         //let ints = [-2, -4, -8, -15, -30, -60, -125, -250, -500, -1000, -4000]
         let ints: [UInt] = [
@@ -212,6 +222,21 @@ struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible {
         }
         return pres
     }()
+    
+    static let integers: Set<ShutterSpeed> = [
+        ShutterSpeed(rawValue: 4),
+        ShutterSpeed(rawValue: 8),
+        ShutterSpeed(rawValue: 15),
+        ShutterSpeed(rawValue: 30),
+        ShutterSpeed(rawValue: 60),
+        ShutterSpeed(rawValue: 100),
+        ShutterSpeed(rawValue: 125),
+        ShutterSpeed(rawValue: 250),
+        ShutterSpeed(rawValue: 500),
+        ShutterSpeed(rawValue: 1000),
+        ShutterSpeed(rawValue: 2000),
+        ShutterSpeed(rawValue: 4000),
+    ]
 }
 
 struct ShutterTimer {

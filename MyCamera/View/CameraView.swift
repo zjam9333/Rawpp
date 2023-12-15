@@ -66,7 +66,7 @@ struct CameraView: View {
                     }
                     .frame(height: 44)
                 }
-                .foregroundColor(.black)
+                .foregroundStyle(.black)
                 .padding(10)
                 .background(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -111,7 +111,7 @@ struct CameraView: View {
                     if t > 0 {
                         Text("\(t)")
                             .font(.system(size: 12))
-                            .foregroundColor(.yellow)
+                            .foregroundStyle(.yellow)
                     }
                 }
             }
@@ -131,11 +131,11 @@ struct CameraView: View {
                         Text("AE")
                     case .manual:
                         Text("MANUAL")
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
                 }
                 .font(.system(size: 10))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .padding(5)
                 .frame(height: 24)
                 .border(.white, width: 1)
@@ -163,7 +163,7 @@ struct CameraView: View {
                     }
                 }
                 .font(.system(size: 10))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .padding(5)
                 .frame(height: 24)
                 .border(.white, width: 1)
@@ -199,24 +199,40 @@ struct CameraView: View {
                     }
                     .opacity(!viewModel.showingEVIndicators ? 1 : 0)
                     
-                    switch viewModel.exposureMode {
-                    case .auto:
-                        VStack {
-                            exposureValueIndicator
+                    VStack {
+                        switch viewModel.exposureMode {
+                        case .auto:
+                            valuesIndicator(currentValue: viewModel.exposureValue, values: ExposureValue.presets) { va in
+                                return ExposureValue.integers.contains(va)
+                            }
                             Text(String(format: "EV %.1f", viewModel.exposureValue.floatValue))
-                                .font(.system(size: 12))
-                                .foregroundColor(.white)
-                                .frame(alignment: .leading)
+                                .font(.system(size: 24))
+                                .foregroundStyle(.white)
+                        case .manual:
+                            HStack {
+                                VStack {
+                                    valuesIndicator(currentValue: viewModel.ISO, values: ISOValue.presets) { va in
+                                        return ISOValue.integers.contains(va)
+                                    }
+                                    Text(String(format: "iso %.0f", viewModel.ISO.floatValue))
+                                        .font(.system(size: 24))
+                                        .foregroundStyle(.white)
+                                }
+                                
+                                VStack {
+                                    valuesIndicator(currentValue: viewModel.shutterSpeed, values: ShutterSpeed.presets) { va in
+                                        return ShutterSpeed.integers.contains(va)
+                                    }
+                                    Text(String(format: "ss %@", viewModel.shutterSpeed.description))
+                                        .font(.system(size: 24))
+                                        .foregroundStyle(.white)
+                                }
+                            }
                         }
-                        .opacity(viewModel.showingEVIndicators ? 1 : 0)
-                    case .manual:
-                        Text(String(format: "iso %.0f ss %@", viewModel.ISO.floatValue, viewModel.shutterSpeed.description))
-                            .font(.system(size: 24))
-                            .foregroundColor(.white)
-                            .padding(10)
-                            .background(Color.black.opacity(0.5))
-                            .opacity(viewModel.showingEVIndicators ? 1 : 0)
                     }
+                    .padding(10)
+                    .background(Color.black.opacity(0.5))
+                    .opacity(viewModel.showingEVIndicators ? 1 : 0)
                 }
                 .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
                 .animation(viewModel.showingEVIndicators ? .default : .default.delay(1), value: viewModel.showingEVIndicators)
@@ -226,11 +242,11 @@ struct CameraView: View {
                 if let timer = viewModel.timerSeconds {
                     let seconds = Int(timer.value) + 1
                     Circle()
-                        .foregroundColor(.black.opacity(0.5))
+                        .foregroundStyle(.black.opacity(0.5))
                         .frame(width: 100, height: 100, alignment: .center)
                         .overlay(alignment: .center) {
                             Text("\(seconds)")
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                                 .font(.system(size: 72))
                         }
                 } 
@@ -248,7 +264,7 @@ struct CameraView: View {
                                         .overlay {
                                             Text(i.title)
                                                 .font(.system(size: 12))
-                                                .foregroundColor(.white)
+                                                .foregroundStyle(.white)
                                         }
                                 }
                             }
@@ -306,13 +322,16 @@ struct CameraView: View {
             VStack(alignment: .trailing, spacing: 8) {
                 switch viewModel.exposureMode {
                 case .auto:
-                    Text(String(format: "EV %.1f", viewModel.exposureValue.floatValue)).font(.system(size: 12))
-                        .foregroundColor(.white)
+                    Text(String(format: "EV %.1f", viewModel.exposureValue.floatValue))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white)
                 case .manual:
-                    Text(String(format: "ISO %.0f", viewModel.ISO.floatValue)).font(.system(size: 12))
-                        .foregroundColor(.white)
-                    Text("SS \(viewModel.shutterSpeed.description)").font(.system(size: 12))
-                        .foregroundColor(.white)
+                    Text(String(format: "iso %.0f", viewModel.ISO.floatValue))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white)
+                    Text("ss \(viewModel.shutterSpeed.description)")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white)
                 }
                 if let camera = viewModel.currentCamera {
                     let cameraLens = String(format: camera.magnification >= 1 ? "x%.0f" : "x%.01f", camera.magnification)
@@ -328,7 +347,7 @@ struct CameraView: View {
                     }()
                     Text("\(cameraPosition) \(cameraLens)")
                         .font(.system(size: 12))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                 }
             }
             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
@@ -340,17 +359,16 @@ struct CameraView: View {
         }
     }
     
-    @ViewBuilder var exposureValueIndicator: some View {
+    @ViewBuilder func valuesIndicator<Element>(currentValue: Element, values: [Element], isInteger: @escaping (Element) -> Bool) -> some View where Element: Hashable {
         HStack(alignment: .bottom, spacing: 2) {
-            ForEach(ExposureValue.presetExposureValues, id: \.self) { ev in
-                let isSelected = viewModel.exposureValue == ev
-                let isInteger = ExposureValue.integerValues.contains(ev)
+            ForEach(values, id: \.self) { ev in
+                let isSelected = currentValue == ev
                 Color.clear
                     .frame(width: isSelected ? 2 : 1, height: 12)
                     .overlay(alignment: .bottom) {
                         Rectangle()
                             .fill(isSelected ? Color.red : Color.white)
-                            .frame(height: isInteger ? 12 : 8)
+                            .frame(height: isInteger(ev) ? 12 : 8)
                     }
                     .overlay(alignment: .top) {
                         if isSelected {
@@ -362,19 +380,7 @@ struct CameraView: View {
                                 .offset(y: -8)
                         }
                     }
-                //                                .animation(.default, value: viewModel.exposureValue)
             }
-        }
-    }
-    
-    @ViewBuilder func strokeText(text: String, radius: CGFloat, borderColor: Color) -> some View {
-        ZStack{
-            ZStack{
-                Text(text).offset(x:  radius, y:  radius)
-                Text(text).offset(x: -radius, y: -radius)
-            }
-            .foregroundColor(borderColor)
-            Text(text)
         }
     }
     
@@ -383,29 +389,33 @@ struct CameraView: View {
         Group {
             switch viewModel.exposureMode {
             case .auto:
-                StepDragView(isDragging: $viewModel.showingEVIndicators) { step in
+                StepDragView(isDragging: $viewModel.showingEVIndicators, value: $viewModel.exposureValue, items: ExposureValue.presets) {
                     viewModel.touchFeedback()
-                    viewModel.increaseEV(step: step)
                 }
             case .manual:
                 HStack {
-                    StepDragView(isDragging: $viewModel.showingEVIndicators) { step in
+                    StepDragView(isDragging: $viewModel.showingEVIndicators, value: $viewModel.ISO, items: ISOValue.presets) {
                         viewModel.touchFeedback()
-                        viewModel.increaseISO(step: step)
                     }
-                    StepDragView(isDragging: $viewModel.showingEVIndicators) { step in
+                    StepDragView(isDragging: $viewModel.showingEVIndicators, value: $viewModel.shutterSpeed, items: ShutterSpeed.presets) {
                         viewModel.touchFeedback()
-                        viewModel.increaseShutterSpeed(step: step)
                     }
                 }
             }
         }
         .contentShape(Rectangle())
-        //                    .border(.red)
         .onTapGesture(count: 2) {
-            viewModel.exposureValue = .zero
-            viewModel.shutterSpeed = .percent100
-            viewModel.ISO = .iso100
+            @MainActor func resetExposure() async {
+                viewModel.exposureValue = .zero
+                viewModel.shutterSpeed = .percent100
+                viewModel.ISO = .iso100
+                viewModel.showingEVIndicators = true
+                try? await Task.sleep(nanoseconds: 0_010_000_000)
+                viewModel.showingEVIndicators = false
+            }
+            Task {
+                await resetExposure()
+            }
         }
         .onTapGesture {
             viewModel.focus(pointOfInterest: .init(x: 0.5, y: 0.5))
@@ -413,20 +423,6 @@ struct CameraView: View {
         .frame(width: viewModel.videoOrientation.isLandscape ? size.height : size.width, height: viewModel.videoOrientation.isLandscape ? size.width : size.height)
         .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
         .frame(width: size.width, height: size.height)
-    }
-    
-    func dragToggled(step: Int, left: Bool) {
-        viewModel.touchFeedback()
-        switch viewModel.exposureMode {
-        case .auto:
-            viewModel.increaseEV(step: step)
-        case .manual:
-            if left {
-                viewModel.increaseISO(step: step)
-            } else {
-                viewModel.increaseShutterSpeed(step: step)
-            }
-        }
     }
 }
 

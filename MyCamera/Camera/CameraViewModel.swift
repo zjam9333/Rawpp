@@ -226,42 +226,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
     
-    func increaseEV(step: Int) {
-        let values = ExposureValue.presetExposureValues
-        guard let index = values.firstIndex(of: exposureValue) else {
-            exposureValue = .zero
-            return
-        }
-        let next = index + step
-        if values.indices.contains(next) {
-            exposureValue = values[next]
-        }
-    }
-    
-    func increaseISO(step: Int) {
-        let values = ISOValue.presetISOs
-        guard let index = values.firstIndex(of: ISO) else {
-            ISO = .iso100
-            return
-        }
-        let next = index + step
-        if values.indices.contains(next) {
-            ISO = values[next]
-        }
-    }
-    
-    func increaseShutterSpeed(step: Int) {
-        let values = ShutterSpeed.presetShutterSpeeds
-        guard let index = values.firstIndex(of: shutterSpeed) else {
-            shutterSpeed = .percent100
-            return
-        }
-        let next = index + step
-        if values.indices.contains(next) {
-            shutterSpeed = values[next]
-        }
-    }
-    
     // MARK: Device Orientation
     
 #if targetEnvironment(simulator)

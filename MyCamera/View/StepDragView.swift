@@ -7,11 +7,18 @@
 
 import SwiftUI
 
-struct StepDragView: View {
-    @State private var lastOffset: CGFloat = 0
+struct StepDragView<Element>: View where Element: Equatable {
     @Binding var isDragging: Bool
     var stepDistance: CGFloat = 12
-    let onStepToggled: (Int) -> Void
+    @Binding var value: Element
+    let items: [Element]
+    var onStepToggled: () -> Void = {}
+    
+    class SomeObject: ObservableObject {
+        var lastOffset: CGFloat = 0
+    }
+    
+    @StateObject private var cacheObject = SomeObject()
     
     var body: some View {
         let drag = DragGesture()
@@ -19,21 +26,35 @@ struct StepDragView: View {
                 isDragging = true
                 let currentOffSet = -(value.location.y - value.startLocation.y)
                 let thres: CGFloat = stepDistance
-                if (currentOffSet - lastOffset > thres) {
-                    lastOffset += thres
-                    onStepToggled(1)
-                } else if (currentOffSet - lastOffset <= -thres) {
-                    lastOffset -= thres
-                    onStepToggled(-1)
+                if (currentOffSet - cacheObject.lastOffset > thres) {
+                    cacheObject.lastOffset += thres
+                    toggleStep(step: 1)
+                } else if (currentOffSet - cacheObject.lastOffset <= -thres) {
+                    cacheObject.lastOffset -= thres
+                    toggleStep(step: -1)
                 }
             }
             .onEnded{ v in
-                lastOffset = 0
+                cacheObject.lastOffset = 0
                 isDragging = false
             }
         Rectangle()
             .fill(.clear)
             .contentShape(Rectangle())
             .gesture(drag)
+    }
+    
+    func toggleStep(step: Int) {
+        onStepToggled()
+        guard let index = items.firstIndex(of: value) else {
+            if let fir = items.first {
+                value = fir
+            }
+            return
+        }
+        let next = index + step
+        if items.indices.contains(next) {
+            value = items[next]
+        }
     }
 }
