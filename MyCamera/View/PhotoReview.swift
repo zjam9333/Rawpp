@@ -23,6 +23,10 @@ struct PhotoReview: View {
                             ZoomView(presenting: index == currentTag, contentAspectRatio: rate) {
                                 Image(uiImage: img)
                                     .resizable()
+                            } shouldDragDismiss: { offset in
+                                if offset < -100 {
+                                    presenting = false
+                                }
                             }
                             .tag(index)
                         } else {

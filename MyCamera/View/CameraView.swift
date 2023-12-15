@@ -383,53 +383,20 @@ struct CameraView: View {
         Group {
             switch viewModel.exposureMode {
             case .auto:
-                Rectangle()
-                    .fill(.clear)
-                    .contentShape(Rectangle())
-                    .gesture(
-                        stepDragGesture(onDraging: { b in
-                            viewModel.showingEVIndicators = b
-                        }, onStepToogled: { step in
-                            viewModel.touchFeedback()
-                            viewModel.increaseEV(step: step)
-                        }, offsetSetter: { value in
-                            viewModel.lastEVDragOffset = value
-                        }, offsetGetter: {
-                            return viewModel.lastEVDragOffset
-                        })
-                    )
+                StepDragView(isDragging: $viewModel.showingEVIndicators) { step in
+                    viewModel.touchFeedback()
+                    viewModel.increaseEV(step: step)
+                }
             case .manual:
                 HStack {
-                    Rectangle()
-                        .fill(.clear)
-                        .contentShape(Rectangle())
-                        .gesture(
-                            stepDragGesture(onDraging: { b in
-                                viewModel.showingEVIndicators = b
-                            }, onStepToogled: { step in
-                                viewModel.touchFeedback()
-                                viewModel.increaseISO(step: step)
-                            }, offsetSetter: { value in
-                                viewModel.lastEVDragOffset = value
-                            }, offsetGetter: {
-                                return viewModel.lastEVDragOffset
-                            })
-                        )
-                    Rectangle()
-                        .fill(.clear)
-                        .contentShape(Rectangle())
-                        .gesture(
-                            stepDragGesture(onDraging: { b in
-                                viewModel.showingEVIndicators = b
-                            }, onStepToogled: { step in
-                                viewModel.touchFeedback()
-                                viewModel.increaseShutterSpeed(step: step)
-                            }, offsetSetter: { value in
-                                viewModel.lastEVDragOffset = value
-                            }, offsetGetter: {
-                                return viewModel.lastEVDragOffset
-                            })
-                        )
+                    StepDragView(isDragging: $viewModel.showingEVIndicators) { step in
+                        viewModel.touchFeedback()
+                        viewModel.increaseISO(step: step)
+                    }
+                    StepDragView(isDragging: $viewModel.showingEVIndicators) { step in
+                        viewModel.touchFeedback()
+                        viewModel.increaseShutterSpeed(step: step)
+                    }
                 }
             }
         }
@@ -460,27 +427,6 @@ struct CameraView: View {
                 viewModel.increaseShutterSpeed(step: step)
             }
         }
-    }
-    
-    func stepDragGesture(onDraging: @escaping (Bool) -> Void, onStepToogled: @escaping (Int) -> Void, offsetSetter: @escaping (CGFloat) -> Void, offsetGetter: @escaping () -> CGFloat) -> some Gesture {
-        return DragGesture()
-            .onChanged { value in
-                onDraging(true)
-                let currentOffSet = -(value.location.y - value.startLocation.y)
-                let thres: CGFloat = 12
-                let lastOffset = offsetGetter()
-                if (currentOffSet - lastOffset > thres) {
-                    offsetSetter(lastOffset + thres)
-                    onStepToogled(1)
-                } else if (currentOffSet - lastOffset <= -thres) {
-                    offsetSetter(lastOffset - thres)
-                    onStepToogled(-1)
-                }
-            }
-            .onEnded{ v in
-                offsetSetter(0)
-                onDraging(false)
-            }
     }
 }
 

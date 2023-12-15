@@ -11,11 +11,13 @@ struct ZoomView<Content: View>: UIViewRepresentable {
     let presenting: Bool
     let contentAspectRatio: CGFloat
     @ViewBuilder let content: () -> Content
+    let shouldDragDismiss: (CGFloat) -> Void
     
-    init(presenting: Bool = true, contentAspectRatio: CGFloat = 1, content: @escaping () -> Content) {
+    init(presenting: Bool = true, contentAspectRatio: CGFloat = 1, content: @escaping () -> Content, shouldDragDismiss: @escaping (CGFloat) -> Void) {
         self.contentAspectRatio = contentAspectRatio
         self.content = content
         self.presenting = presenting
+        self.shouldDragDismiss = shouldDragDismiss
     }
     
     typealias UIViewType = UIScrollView
@@ -29,6 +31,7 @@ struct ZoomView<Content: View>: UIViewRepresentable {
     
     func makeCoordinator() -> Coordinator {
         let c = ScrollViewPresentCoordinator(contentAspectRatio: contentAspectRatio, content: content())
+        c.shouldDragDismiss = shouldDragDismiss
         return c
     }
     
@@ -62,6 +65,8 @@ fileprivate class ZoomViewScrollView: UIScrollView {
 class ScrollViewPresentCoordinator<Content: View>: UIHostingController<Content>, UIScrollViewDelegate {
     var contentAspectRatio: CGFloat
     
+    var shouldDragDismiss: (CGFloat) -> Void = { _ in }
+    
     init(contentAspectRatio: CGFloat, content: Content) {
         self.contentAspectRatio = contentAspectRatio
         super.init(rootView: content)
@@ -76,6 +81,7 @@ class ScrollViewPresentCoordinator<Content: View>: UIHostingController<Content>,
     }
     private lazy var myScrollView: UIScrollView = {
         let m = ZoomViewScrollView()
+        m.alwaysBounceVertical = true
         m.frameDidChangedHandler = { [weak self] in
             self?.updateChildViewFrameIfNeed()
         }
@@ -140,17 +146,13 @@ class ScrollViewPresentCoordinator<Content: View>: UIHostingController<Content>,
     }
     
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
-        print("scrollViewDidZoom(_ scrollView: UIScrollView)")
         let frame = childView.frame
-        print("childView.frame", frame)
         let bounds = scrollView.bounds
-        print("scrollView.bounds", bounds)
         if frame.width >= bounds.width {
             if frame.minX > 0 {
                 childView.frame.origin.x = 0
             }
         } else {
-            print("reset center x")
             childView.frame.origin.x = (bounds.width - frame.width) / 2
         }
         if frame.height >= bounds.height {
@@ -158,8 +160,15 @@ class ScrollViewPresentCoordinator<Content: View>: UIHostingController<Content>,
                 childView.frame.origin.y = 0
             }
         } else {
-            print("reset center y")
             childView.frame.origin.y = (bounds.height - frame.height) / 2
         }
+    }
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard scrollView.isZooming == false else {
+            return
+        }
+        print(scrollView.contentOffset)
+        shouldDragDismiss(scrollView.contentOffset.y)
     }
 }

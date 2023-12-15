@@ -45,7 +45,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var isAppInBackground = false
     
     private let feedbackGenerator = UISelectionFeedbackGenerator()
-    var lastEVDragOffset: CGFloat = 0
     
     private var autoTimer: Timer?
     

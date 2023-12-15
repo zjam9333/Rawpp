@@ -105,15 +105,13 @@ struct SettingView: View {
             } set: { ne in
                 property.wrappedValue.value = ne
             }
-            Slider(value: bi, in: old.minValue...old.maxValue) {
-                Text(")")
-            } onEditingChanged: { i in
+            SingleSlider(value: bi, range: old.minValue...old.maxValue, foregroundColor: .yellow, backgroundColor: .gray.opacity(0.2)) { i in
                 Task {
                     await createRawOutputPreview()
                 }
             }
-            .accentColor(.yellow)
-            .frame(width: 200)
+            .frame(width: 200, height: 20)
+            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
     }
     

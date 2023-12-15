@@ -12,6 +12,8 @@
 		1C5E98982B18699200797E15 /* ZoomView2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5E98972B18699200797E15 /* ZoomView2.swift */; };
 		1C5E989A2B18703500797E15 /* PhotoReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5E98992B18703500797E15 /* PhotoReview.swift */; };
 		1CA2B0312AB822B9004EA5D3 /* RAWCaptureDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CA2B0302AB822B9004EA5D3 /* RAWCaptureDelegate.swift */; };
+		1CAB29E32B2C255E00C7C884 /* SingleSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CAB29E22B2C255E00C7C884 /* SingleSlider.swift */; };
+		1CAB29E52B2C340900C7C884 /* StepDragView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CAB29E42B2C340900C7C884 /* StepDragView.swift */; };
 		1CB4101426F1FA7300D8E931 /* MyCameraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB4101326F1FA7300D8E931 /* MyCameraApp.swift */; };
 		1CB4101826F1FA7500D8E931 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1CB4101726F1FA7500D8E931 /* Assets.xcassets */; };
 		1CB4101B26F1FA7500D8E931 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1CB4101A26F1FA7500D8E931 /* Preview Assets.xcassets */; };
@@ -27,6 +29,8 @@
 		1C5E98972B18699200797E15 /* ZoomView2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomView2.swift; sourceTree = "<group>"; };
 		1C5E98992B18703500797E15 /* PhotoReview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoReview.swift; sourceTree = "<group>"; };
 		1CA2B0302AB822B9004EA5D3 /* RAWCaptureDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAWCaptureDelegate.swift; sourceTree = "<group>"; };
+		1CAB29E22B2C255E00C7C884 /* SingleSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingleSlider.swift; sourceTree = "<group>"; };
+		1CAB29E42B2C340900C7C884 /* StepDragView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepDragView.swift; sourceTree = "<group>"; };
 		1CB4101026F1FA7300D8E931 /* MyCamera.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyCamera.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CB4101326F1FA7300D8E931 /* MyCameraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyCameraApp.swift; sourceTree = "<group>"; };
 		1CB4101726F1FA7500D8E931 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -56,6 +60,8 @@
 				1C5E98972B18699200797E15 /* ZoomView2.swift */,
 				1C5E98992B18703500797E15 /* PhotoReview.swift */,
 				1C0D507C2B26FAD800E0D84C /* SettingView.swift */,
+				1CAB29E22B2C255E00C7C884 /* SingleSlider.swift */,
+				1CAB29E42B2C340900C7C884 /* StepDragView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -181,10 +187,12 @@
 			files = (
 				1C5E989A2B18703500797E15 /* PhotoReview.swift in Sources */,
 				1CB4102C26F2001500D8E931 /* CameraView.swift in Sources */,
+				1CAB29E32B2C255E00C7C884 /* SingleSlider.swift in Sources */,
 				1CB4101426F1FA7300D8E931 /* MyCameraApp.swift in Sources */,
 				1C0D507D2B26FAD800E0D84C /* SettingView.swift in Sources */,
 				1C28C4F92AD4EB0C00D99C55 /* Models.swift in Sources */,
 				1CB4102426F1FC7500D8E931 /* CameraService.swift in Sources */,
+				1CAB29E52B2C340900C7C884 /* StepDragView.swift in Sources */,
 				1C5E98982B18699200797E15 /* ZoomView2.swift in Sources */,
 				1CB4102826F1FD8A00D8E931 /* CameraViewModel.swift in Sources */,
 				1CA2B0312AB822B9004EA5D3 /* RAWCaptureDelegate.swift in Sources */,
