@@ -30,6 +30,7 @@ struct SettingView: View {
                     Section("Output") {
                         sliderCell(title: "Heif Quality", property: $sharedPropertyies.output.heifLossyCompressionQuality)
                     }
+                    /*
                     Section("Post Progress") {
                         /*
                         sliderCell(title: "Vibrance", property: $sharedPropertyies.post.vibrance)
@@ -40,6 +41,7 @@ struct SettingView: View {
                         sliderCell(title: "Curve Point 3", property: $sharedPropertyies.post.curvePoint3)
                         sliderCell(title: "Curve Point 4", property: $sharedPropertyies.post.curvePoint4)
                     }
+                     */
                     Section("Raw Filter") {
                         sliderCell(title: "Boost", property: $sharedPropertyies.raw.boostAmount)
                         /*

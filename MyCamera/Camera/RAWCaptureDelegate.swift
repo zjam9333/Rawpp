@@ -60,14 +60,23 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         guard let rawFilter = customProperties.customizedRawFilter(photoData: photoData) else {
             return
         }
-        guard let ciimg = rawFilter.outputImage else {
+        guard var ciimg = rawFilter.outputImage else {
             return
         }
-        ciimg.settingProperties(photo.metadata)
-        guard let tonedCiimage = customProperties.toneCurvedImage(ciimage: ciimg) else {
-            return
+//        ciimg = ciimg.settingProperties(photo.metadata)
+        let autoOptions: [CIImageAutoAdjustmentOption: Any] = [
+//            .enhance: true,
+//            .redEye: true,
+//            .features: true,
+            .level: false,
+            .crop: false,
+        ]
+        let adjustments = ciimg.autoAdjustmentFilters(options: autoOptions)
+        for fil in adjustments {
+            fil.setValue(ciimg, forKey: kCIInputImageKey)
+            ciimg = fil.outputImage ?? ciimg
         }
-        compressedData = customProperties.heifData(ciimage: tonedCiimage)
+        compressedData = customProperties.heifData(ciimage: ciimg)
     }
     
     func savePhotoToAlbum() async {
