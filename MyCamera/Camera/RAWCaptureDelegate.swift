@@ -19,9 +19,6 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     
     let saveOption: RAWSaveOption
     
-    private var rawData: Data?
-    private var compressedData: Data?
-    
     let didFinish: (Photo?) -> Void
     
     func photoOutput(_ output: AVCapturePhotoOutput, willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings) {
@@ -33,68 +30,78 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput,
                      didFinishProcessingPhoto photo: AVCapturePhoto,
                      error: Error?) {
-        Task {
-            if let error = error {
-                print("didFinishProcessingPhoto", error)
-            } else if photo.isRawPhoto {
-                await handleRawOutput(photo: photo)
+        Task(priority: .high) {
+            let output = await processPhoto(photo, error: error)
+            if let output = output {
+                didFinish(Photo(data: output))
             } else {
-                if compressedData == nil {
-                    // compressed的另一个data
-                    // 锐化过度的版本
-                    compressedData = photo.fileDataRepresentation()
-                }
+                didFinish(nil)
             }
-            await savePhotoToAlbum()
         }
     }
     
-    func handleRawOutput(photo: AVCapturePhoto) async {
+    func processPhoto(_ photo: AVCapturePhoto, error: Error?) async -> Data? {
+        guard let rawData = photo.fileDataRepresentation(), error == nil else {
+            return nil
+        }
+        guard photo.isRawPhoto else {
+            // apple处理的heic版本
+            let notRawData = rawData
+            savePhotoData(notRawData)
+            return notRawData
+        }
+        if saveOption.saveRAW {
+            savePhotoData(rawData)
+        }
+        if saveOption.saveJpeg {
+            if let processedHeic = await handleRawOutput(photoData: rawData) {
+                savePhotoData(processedHeic)
+                return processedHeic
+            }
+        }
+        return rawData
+    }
+    
+    func savePhotoData(_ data: Data) {
+        Task {
+            try? await PHPhotoLibrary.shared().performChanges {
+                PHAssetCreationRequest.forAsset().addResource(with: .photo, data: data, options: nil)
+            }
+        }
+    }
+    
+    func handleRawOutput(photoData: Data) async -> Data? {
         // Access the file data representation of this photo.
-        guard let photoData = photo.fileDataRepresentation() else {
-            return
-        }
-        rawData = photoData
         // 优先使用raw转的jpeg data，避免苹果默认的处理
+        print("RAW", "begin")
         let customProperties = RawFilterProperties()
-        guard let rawFilter = customProperties.customizedRawFilter(photoData: photoData) else {
-            return
+        print("RAW", "read properties")
+        guard let rawFilter = ImageTool.rawFilter(photoData: photoData, boostAmount: customProperties.raw.boostAmount.value) else {
+            return nil
         }
+        print("RAW", "filter created")
         guard var ciimg = rawFilter.outputImage else {
-            return
+            return nil
         }
+        print("RAW", "outputed Image")
 //        ciimg = ciimg.settingProperties(photo.metadata)
         let autoOptions: [CIImageAutoAdjustmentOption: Any] = [
-//            .enhance: true,
-//            .redEye: true,
-//            .features: true,
+            // 只使用最基本的enhance
+            .enhance: true,
+            .redEye: false,
+            .features: [],
             .level: false,
             .crop: false,
         ]
         let adjustments = ciimg.autoAdjustmentFilters(options: autoOptions)
+        print("RAW", "autoAdjustmentFilters created", adjustments)
         for fil in adjustments {
             fil.setValue(ciimg, forKey: kCIInputImageKey)
             ciimg = fil.outputImage ?? ciimg
         }
-        compressedData = customProperties.heifData(ciimage: ciimg)
-    }
-    
-    func savePhotoToAlbum() async {
-        if saveOption.saveRAW, let rawData = rawData  {
-            try? await PHPhotoLibrary.shared().performChanges {
-                PHAssetCreationRequest.forAsset().addResource(with: .photo, data: rawData, options: nil)
-            }
-        }
-        if saveOption.saveJpeg, let compressedData = compressedData {
-            try? await PHPhotoLibrary.shared().performChanges {
-                PHAssetCreationRequest.forAsset().addResource(with: .photo, data: compressedData, options: nil)
-            }
-        }
-        
-        if let photoData = compressedData ?? rawData {
-            didFinish(Photo(data: photoData, raw: rawData))
-        } else {
-            didFinish(nil)
-        }
+        print("RAW", "autoAdjustmentFilters used")
+        let heif = ImageTool.heifData(ciimage: ciimg, quality: customProperties.output.heifLossyCompressionQuality.value)
+        print("RAW", "heif")
+        return heif
     }
 }

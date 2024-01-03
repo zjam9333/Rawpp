@@ -7,19 +7,26 @@
 
 import AVFoundation
 import CoreImage
-import CoreImage.CIFilterBuiltins
 
-private let log = true
+var isXcodeDebugging: Bool {
+    return CommandLine.arguments.contains("IS_XCODE_DEBUGGING")
+}
 
-/// 覆盖print
-func print(_ items: Any..., separator: String = " ") {
-    guard log else {
+/// "DEBUGGING LOG"
+func print(_ item: Any..., separator: String = " ", terminator: String = "\n") {
+    guard isXcodeDebugging else {
         return
     }
-    let str = items.map { any in
-        return String(describing: any)
-    }.joined(separator: separator)
-    Swift.print(str)
+    Task {
+        let date = Date()
+        var strings = item.map { an in
+            return String(describing: an)
+        }
+        strings.insert(date.description, at: 0)
+        strings.insert("DEBUGGING LOG", at: 0)
+        let p = strings.joined(separator: separator)
+        Swift.print(p, terminator: terminator)
+    }
 }
 
 enum SessionSetupResult {
@@ -38,12 +45,10 @@ struct Photo: Identifiable, Equatable {
     //    Data representation of the captured photo
     
     let data: Data
-    let raw: Data?
     
-    init(id: String = UUID().uuidString, data: Data, raw: Data?) {
+    init(id: String = UUID().uuidString, data: Data) {
         self.id = id
         self.data = data
-        self.raw = raw
     }
 }
 
@@ -322,115 +327,29 @@ struct RawFilterProperties {
     typealias Value = Float
     
     var raw = Raw()
-    var post = Post()
     var output = Output()
     
     struct Raw {
         var boostAmount = CustomizeValue<Value>(name: "RawFilterProperties_boostAmount", default: 0.5, minValue: 0, maxValue: 1)
-        
-        var exposure = CustomizeValue<Value>(name: "RawFilterProperties_exposure", default: 0, minValue: 0, maxValue: 1)
-        
-        var baselineExposure = CustomizeValue<Value>(name: "RawFilterProperties_baselineExposure", default: 0, minValue: 0, maxValue: 1)
-        
-        var shadowBias = CustomizeValue<Value>(name: "RawFilterProperties_shadowBias", default: 0, minValue: 0, maxValue: 1)
-        
-        var boostShadowAmount = CustomizeValue<Value>(name: "RawFilterProperties_boostShadowAmount", default: 0, minValue: 0, maxValue: 2)
-        
-        var extendedDynamicRangeAmount = CustomizeValue<Value>(name: "RawFilterProperties_extendedDynamicRangeAmount", default: 0, minValue: 0, maxValue: 2)
-        
-        var luminanceNoiseReductionAmount = CustomizeValue<Value>(name: "RawFilterProperties_luminanceNoiseReductionAmount", default: 0.2, minValue: 0, maxValue: 1)
-        
-        var colorNoiseReductionAmount = CustomizeValue<Value>(name: "RawFilterProperties_colorNoiseReductionAmount", default: 0.2, minValue: 0, maxValue: 1)
-        
-        var sharpnessAmount = CustomizeValue<Value>(name: "RawFilterProperties_sharpnessAmount", default: 0.2, minValue: 0, maxValue: 1)
-        
-        var contrastAmount = CustomizeValue<Value>(name: "RawFilterProperties_contrastAmount", default: 0.2, minValue: 0, maxValue: 1)
-        
-        var detailAmount = CustomizeValue<Value>(name: "RawFilterProperties_detailAmount", default: 0.5, minValue: 0, maxValue: 3)
-        
-        var moireReductionAmount = CustomizeValue<Value>(name: "RawFilterProperties_moireReductionAmount", default: 0.2, minValue: 0, maxValue: 1)
-        
-        var localToneMapAmount = CustomizeValue<Value>(name: "RawFilterProperties_localToneMapAmount", default: 0, minValue: 0, maxValue: 1)
     }
     
     struct Output {
         var heifLossyCompressionQuality = CustomizeValue<Value>(name: "RawFilterProperties_heifLossyCompressionQuality", default: 0.7, minValue: 0.1, maxValue: 1)
     }
-    
-    struct Post {
-        var curvePoint0 = CustomizeValue<Value>(name: "RawFilterProperties_curvePoint0", default: 0, minValue: 0, maxValue: 1)
-        var curvePoint1 = CustomizeValue<Value>(name: "RawFilterProperties_curvePoint1", default: 0.25, minValue: 0, maxValue: 1)
-        var curvePoint2 = CustomizeValue<Value>(name: "RawFilterProperties_curvePoint2", default: 0.5, minValue: 0, maxValue: 1)
-        var curvePoint3 = CustomizeValue<Value>(name: "RawFilterProperties_curvePoint3", default: 0.75, minValue: 0, maxValue: 1)
-        var curvePoint4 = CustomizeValue<Value>(name: "RawFilterProperties_curvePoint4", default: 1, minValue: 0, maxValue: 1)
-        var vibrance = CustomizeValue<Value>(name: "RawFilterProperties_vibrance", default: 0, minValue: 0, maxValue: 1)
-    }
-    
-    func customizedRawFilter(photoData: Data) -> CIRAWFilter? {
+}
+
+enum ImageTool {
+    static func rawFilter(photoData: Data, boostAmount: Float) -> CIRAWFilter? {
         guard let filter = CIRAWFilter(imageData: photoData, identifierHint: "raw") else {
             return nil
         }
-        filter.boostAmount = raw.boostAmount.value
-        /*
-        filter.exposure = raw.exposure.value
-        filter.baselineExposure = raw.baselineExposure.value
-        filter.shadowBias = raw.shadowBias.value
-        filter.boostShadowAmount = raw.boostShadowAmount.value
-        filter.extendedDynamicRangeAmount = raw.extendedDynamicRangeAmount.value
-        filter.isGamutMappingEnabled = false
-        if filter.isLensCorrectionSupported {
-            filter.isLensCorrectionEnabled = true
-        }
-        if filter.isLuminanceNoiseReductionSupported {
-            filter.luminanceNoiseReductionAmount = raw.luminanceNoiseReductionAmount.value
-        }
-        if filter.isColorNoiseReductionSupported {
-            filter.colorNoiseReductionAmount = raw.colorNoiseReductionAmount.value
-        }
-        if filter.isDetailSupported {
-            filter.detailAmount = raw.detailAmount.value
-        }
-        if filter.isSharpnessSupported {
-            filter.sharpnessAmount = raw.sharpnessAmount.value
-        }
-        if filter.isContrastSupported {
-            filter.contrastAmount = raw.contrastAmount.value
-        }
-        if filter.isMoireReductionSupported {
-            filter.moireReductionAmount = raw.moireReductionAmount.value
-        }
-        if filter.isLocalToneMapSupported {
-            filter.localToneMapAmount = raw.localToneMapAmount.value
-        }
-         */
+        filter.boostAmount = boostAmount
         return filter
     }
     
-    func toneCurvedImage(ciimage: CIImage) -> CIImage? {
-        var ciimage: CIImage? = ciimage
-        do {
-            let filter = CIFilter.toneCurve()
-            filter.inputImage = ciimage
-            filter.point0.y = CGFloat(post.curvePoint0.value)
-            filter.point1.y = CGFloat(post.curvePoint1.value)
-            filter.point2.y = CGFloat(post.curvePoint2.value)
-            filter.point3.y = CGFloat(post.curvePoint3.value)
-            filter.point4.y = CGFloat(post.curvePoint4.value)
-            ciimage = filter.outputImage
-        }
-        /*
-        do {
-            let filter2 = CIFilter.vibrance()
-            filter2.inputImage = ciimage
-            filter2.amount = post.vibrance.value
-        }
-         */
-        return ciimage
-    }
-    
-    func heifData(ciimage: CIImage) -> Data? {
-        let option = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): output.heifLossyCompressionQuality.value]
-        let heic = CIContext().heifRepresentation(of: ciimage, format: .BGRA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, options: option)
+    static func heifData(ciimage: CIImage, quality: Float) -> Data? {
+        let options = [CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String): quality]
+        let heic = CIContext().heifRepresentation(of: ciimage, format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, options: options)
         return heic
     }
 }

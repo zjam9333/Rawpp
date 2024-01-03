@@ -25,10 +25,7 @@ struct CameraView: View {
             PhotoReview(photos: viewModel.photos, presenting: $viewModel.showPhoto)
         }
         .sheet(isPresented: $viewModel.showSetting) {
-            let raw = viewModel.photos.first  { p in
-                return p.raw != nil
-            }?.raw
-            SettingView(rawImage: raw, presenting: $viewModel.showSetting)
+            SettingView(presenting: $viewModel.showSetting)
         }
         .onAppear {
             viewModel.configure()
@@ -184,7 +181,7 @@ struct CameraView: View {
                     .opacity(viewModel.isAppInBackground ? 0 : 1)
                     .animation(.default, value: viewModel.isAppInBackground)
                     .overlay {
-                        if CommandLine.arguments.contains("IS_XCODE_DEBUGGING") {
+                        if isXcodeDebugging {
                             Color.black.opacity(0.8)
                         }
                         if viewModel.isCapturing {
@@ -294,6 +291,19 @@ struct CameraView: View {
                 }
                 .opacity(viewModel.isAppInBackground ? 0 : 1)
                 .animation(.default, value: viewModel.isAppInBackground)
+                .overlay(alignment: .center) {
+                    if viewModel.isProcessing {
+                        LoadingView()
+                    }
+                }
+            } else {
+                Rectangle().fill(.black)
+                    .frame(width: 74, height: 74)
+                    .overlay(alignment: .center) {
+                        if viewModel.isProcessing {
+                            LoadingView()
+                        }
+                    }
             }
             
             Spacer()
@@ -450,6 +460,20 @@ struct CameraVideoLayerPreview: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: VideoPreviewView, context: Context) {
+        
+    }
+}
+
+struct LoadingView: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIActivityIndicatorView {
+        let ac = UIActivityIndicatorView(style: .medium)
+        ac.isUserInteractionEnabled = false
+        ac.hidesWhenStopped = false
+        ac.startAnimating()
+        return ac
+    }
+    
+    func updateUIView(_ uiView: UIActivityIndicatorView, context: Context) {
         
     }
 }

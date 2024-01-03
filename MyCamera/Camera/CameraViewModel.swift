@@ -19,6 +19,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var alertError: AlertError?
     @Published var isFlashOn = false
     @Published var isCapturing = false
+    @Published var isProcessing = false
     @Published var rawOption: RAWSaveOption = .cachedRawOption {
         didSet {
             RAWSaveOption.cachedRawOption = rawOption
@@ -177,9 +178,14 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     private func reallyCapture() {
-        
         Task {
+            await MainActor.run {
+                isProcessing = true
+            }
             let result = await service.capturePhoto(rawOption: rawOption, location: lastLocation, flashMode: isFlashOn ? .on : .off)
+            await MainActor.run {
+                isProcessing = false
+            }
             switch result {
             case .failure(let alert):
                 await MainActor.run {

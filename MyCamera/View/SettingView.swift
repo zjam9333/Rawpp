@@ -8,24 +8,17 @@
 import SwiftUI
 
 struct SettingView: View {
-    private let rawImage: Data?
     
     @Binding var presenting: Bool
     
-    init(rawImage: Data?, presenting: Binding<Bool>) {
-        self.rawImage = rawImage
+    init(presenting: Binding<Bool>) {
         self._presenting = presenting
     }
-    
-//    @State private var rawToUIImage: UIImage?
-    @State private var outputUIImage: UIImage?
-    
     @State private var sharedPropertyies = RawFilterProperties()
     
     var body: some View {
         NavigationView {
             VStack {
-                previewView
                 List {
                     Section("Output") {
                         sliderCell(title: "Heif Quality", property: $sharedPropertyies.output.heifLossyCompressionQuality)
@@ -66,22 +59,6 @@ struct SettingView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .navigationViewStyle(.stack)
-        .onAppear {
-            Task {
-//                await createRawOriginalPreview()
-                await createRawOutputPreview()
-            }
-        }
-    }
-    
-    @ViewBuilder var previewView: some View {
-        if let outputUIImage = outputUIImage {
-            Image(uiImage: outputUIImage)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(height: 250)
-                .clipped()
-        }
     }
     
     @ViewBuilder func sliderCell(title: String, property: Binding<CustomizeValue<Float>>) -> some View {
@@ -108,9 +85,7 @@ struct SettingView: View {
                 property.wrappedValue.value = ne
             }
             SingleSlider(value: bi, range: old.minValue...old.maxValue, foregroundColor: .yellow, backgroundColor: .gray.opacity(0.2)) { i in
-                Task {
-                    await createRawOutputPreview()
-                }
+                
             }
             .frame(width: 200, height: 20)
             .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -127,6 +102,7 @@ struct SettingView: View {
 //        }
 //    }
     
+    /*
     func createRawOutputPreview() async {
         print("createRawOutputPreview", "start")
         guard let rawData = rawImage else {
@@ -153,4 +129,5 @@ struct SettingView: View {
             self.outputUIImage = outputUIImage
         }
     }
+     */
 }
