@@ -140,30 +140,14 @@ struct CameraView: View {
             
             Button {
                 viewModel.touchFeedback()
-                switch viewModel.rawOption {
-                case .heif:
-                    viewModel.rawOption = .raw
-                case .raw:
-                    viewModel.rawOption = .rawAndHeif
-                case .rawAndHeif:
-                    viewModel.rawOption = .heif
-                }
+                viewModel.rawOption = viewModel.rawOption.next
             } label: {
-                ZStack {
-                    switch viewModel.rawOption {
-                    case .heif:
-                        Text("HEIF")
-                    case .raw:
-                        Text("RAW")
-                    case .rawAndHeif:
-                        Text("RAW+H")
-                    }
-                }
-                .font(.system(size: 10))
-                .foregroundStyle(.white)
-                .padding(5)
-                .frame(height: 24)
-                .border(.white, width: 1)
+                Text(viewModel.rawOption.title)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.white)
+                    .padding(5)
+                    .frame(height: 24)
+                    .border(.white, width: 1)
             }
         }
         .frame(height: 64)
@@ -364,6 +348,9 @@ struct CameraView: View {
             .padding(10)
             .clipShape(Rectangle())
             .onTapGesture {
+                if viewModel.rawOption.contains([.apple]) {
+                    return
+                }
                 viewModel.showSetting = true
             }
         }

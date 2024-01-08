@@ -111,35 +111,54 @@ struct ExposureValue: Equatable, Hashable {
     }()
 }
 
-enum RAWSaveOption: Int {
-    case raw
-    case heif
-    case rawAndHeif
+struct RAWSaveOption: OptionSet {
+    let rawValue: UInt8
+    
+    static let raw = RAWSaveOption(rawValue: 1 << 1)
+    static let heif = RAWSaveOption(rawValue: 1)
+    static let apple = RAWSaveOption(rawValue: 1 << 7)
     
     var saveRAW: Bool {
-        switch self {
-        case .raw, .rawAndHeif:
-            return true
-        default:
-            return false
-        }
+        return contains(.raw)
     }
     
     var saveJpeg: Bool {
+        return contains(.apple) || contains(.heif)
+    }
+    
+    var next: RAWSaveOption {
         switch self {
-        case .heif, .rawAndHeif:
-            return true
+        case .heif:
+            return .raw
+        case .raw:
+            return [.raw, .heif]
+        case [.raw, .heif]:
+            return .apple
         default:
-            return false
+            return .heif
         }
+    }
+    
+    var title: String {
+        var strs: [String] = []
+        if contains([.apple]) {
+            strs.append("Apple")
+        }
+        if contains([.raw]) {
+            strs.append("Raw")
+        }
+        if contains([.heif]) {
+            strs.append("Heif")
+        }
+        return strs.joined(separator: "+")
     }
     
     static var cachedRawOption: RAWSaveOption {
         get {
-            guard let value = UserDefaults.standard.value(forKey: "CameraViewModelCachedRawOption") as? Int else {
+            guard let value = UserDefaults.standard.value(forKey: "CameraViewModelCachedRawOption") as? UInt8, value > 0 else {
                 return .heif
             }
-            return RAWSaveOption(rawValue: value) ?? .heif
+            return RAWSaveOption(rawValue: value)
         }
         set {
             let value = newValue.rawValue

@@ -211,16 +211,24 @@ class CameraService {
             let err = AlertError(title: "Camera Error", message: "Camera Device is not Enabled", primaryButtonTitle: "OK", secondaryButtonTitle: "Cancel", primaryAction: nil, secondaryAction: nil)
             return .failure(err)
         }
-        let rawFormat = photoOutput.availableRawPhotoPixelFormatTypes.first { code in
-            return AVCapturePhotoOutput.isBayerRAWPixelFormat(code)
-        }
-        
         let photoSettings: AVCapturePhotoSettings
-        
-        if let rawFormat = rawFormat {
-            photoSettings = AVCapturePhotoSettings(rawPixelFormatType: rawFormat)
+        if rawOption == .apple {
+            photoSettings = AVCapturePhotoSettings(format: [
+                AVVideoCodecKey: AVVideoCodecType.hevc
+            ])
+            photoSettings.photoQualityPrioritization = .speed
+            photoSettings.isAutoVirtualDeviceFusionEnabled = false
         } else {
-            photoSettings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.hevc])
+            let rawFormat = photoOutput.availableRawPhotoPixelFormatTypes.first { code in
+                return AVCapturePhotoOutput.isBayerRAWPixelFormat(code)
+            }
+            if let rawFormat = rawFormat {
+                photoSettings = AVCapturePhotoSettings(rawPixelFormatType: rawFormat)
+            } else {
+                photoSettings = AVCapturePhotoSettings(format: [
+                    AVVideoCodecKey: AVVideoCodecType.hevc
+                ])
+            }
         }
         
         if let location = location {
