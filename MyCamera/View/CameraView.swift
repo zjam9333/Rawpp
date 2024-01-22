@@ -94,8 +94,6 @@ struct CameraView: View {
             }
             .accentColor(.white)
             
-            Spacer()
-            
             Button {
                 viewModel.touchFeedback()
                 viewModel.shutterTimer.toggleNext()
@@ -112,6 +110,10 @@ struct CameraView: View {
                     }
                 }
             }
+            
+            Spacer()
+            
+            rawOptionView
             
             Button {
                 viewModel.touchFeedback()
@@ -131,27 +133,51 @@ struct CameraView: View {
                             .foregroundStyle(.red)
                     }
                 }
-                .font(.system(size: 10))
+                .font(.system(size: 12))
                 .foregroundStyle(.white)
                 .padding(5)
                 .frame(height: 24)
                 .border(.white, width: 1)
             }
             
-            Button {
-                viewModel.touchFeedback()
-                viewModel.rawOption = viewModel.rawOption.next
-            } label: {
-                Text(viewModel.rawOption.title)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.white)
-                    .padding(5)
-                    .frame(height: 24)
-                    .border(.white, width: 1)
-            }
         }
         .frame(height: 64)
         .padding(.horizontal, 20)
+    }
+    
+    @ViewBuilder private var rawOptionView: some View {
+        HStack(spacing: 4) {
+            Button {
+                viewModel.touchFeedback()
+                if viewModel.rawOption.contains(.apple) {
+                    viewModel.rawOption.remove(.apple)
+                } else {
+                    viewModel.rawOption.insert(.apple)
+                }
+            } label: {
+                Text("APPLE")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white)
+                    .strikethrough(viewModel.rawOption.contains(.apple) == false, color: .yellow)
+                    .padding(.vertical, 5)
+                    .frame(height: 24)
+            }
+            if viewModel.rawOption.contains(.apple) == false {
+                Button {
+                    viewModel.touchFeedback()
+                    viewModel.rawOption = viewModel.rawOption.next
+                } label: {
+                    Text(viewModel.rawOption.title)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white)
+                        .padding(.vertical, 5)
+                        .frame(height: 24)
+                }
+                .animation(nil, value: viewModel.rawOption)
+            }
+        }
+        .padding(.horizontal, 5)
+        .border(.white, width: 1)
     }
     
     @ViewBuilder private var centerPreview: some View {
@@ -195,7 +221,7 @@ struct CameraView: View {
                                     valuesIndicator(currentValue: viewModel.ISO, values: ISOValue.presets) { va in
                                         return ISOValue.integers.contains(va)
                                     }
-                                    Text(String(format: "iso %.0f", viewModel.ISO.floatValue))
+                                    Text(String(format: "ISO %.0f", viewModel.ISO.floatValue))
                                         .font(.system(size: 24))
                                         .foregroundStyle(.white)
                                 }
@@ -204,7 +230,7 @@ struct CameraView: View {
                                     valuesIndicator(currentValue: viewModel.shutterSpeed, values: ShutterSpeed.presets) { va in
                                         return ShutterSpeed.integers.contains(va)
                                     }
-                                    Text(String(format: "ss %@", viewModel.shutterSpeed.description))
+                                    Text(String(format: "SS %@", viewModel.shutterSpeed.description))
                                         .font(.system(size: 24))
                                         .foregroundStyle(.white)
                                 }
@@ -320,23 +346,23 @@ struct CameraView: View {
                         .font(.system(size: 12))
                         .foregroundStyle(.white)
                 case .manual:
-                    Text(String(format: "iso %.0f", viewModel.ISO.floatValue))
+                    Text(String(format: "ISO %.0f", viewModel.ISO.floatValue))
                         .font(.system(size: 12))
                         .foregroundStyle(.white)
-                    Text("ss \(viewModel.shutterSpeed.description)")
+                    Text("SS \(viewModel.shutterSpeed.description)")
                         .font(.system(size: 12))
                         .foregroundStyle(.white)
                 }
                 if let camera = viewModel.currentCamera {
-                    let cameraLens = String(format: camera.magnification >= 1 ? "x%.0f" : "x%.01f", camera.magnification)
+                    let cameraLens = String(format: camera.magnification >= 1 ? "X%.0f" : "X%.01f", camera.magnification)
                     let cameraPosition: String = {
                         switch (camera.device.position) {
                         case .back:
-                            return "Back"
+                            return "BACK"
                         case .front:
-                            return "Front"
+                            return "FRONT"
                         default:
-                            return "Unknown"
+                            return "UNKNOWN"
                         }
                     }()
                     Text("\(cameraPosition) \(cameraLens)")

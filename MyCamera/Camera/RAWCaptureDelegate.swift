@@ -32,11 +32,10 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
                      error: Error?) {
         Task(priority: .high) {
             let output = await processPhoto(photo, error: error)
-            if let output = output {
-                didFinish(Photo(data: output))
-            } else {
-                didFinish(nil)
+            let photo = output.map { o in
+                return Photo(data: o)
             }
+            didFinish(photo)
         }
     }
     
@@ -53,13 +52,14 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         if saveOption.saveRAW {
             savePhotoData(rawData)
         }
-        if saveOption.saveJpeg {
-            if let processedHeic = await handleRawOutput(photoData: rawData) {
-                savePhotoData(processedHeic)
-                return processedHeic
-            }
+        guard let processedHeic = await handleRawOutput(photoData: rawData) else {
+            // 返回nil都不要返回rawData，会卡
+            return nil
         }
-        return rawData
+        if saveOption.saveJpeg {
+            savePhotoData(processedHeic)
+        }
+        return processedHeic
     }
     
     func savePhotoData(_ data: Data) {

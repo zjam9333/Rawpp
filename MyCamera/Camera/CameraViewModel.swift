@@ -199,6 +199,11 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 if let pic = pic {
                     await MainActor.run {
                         self.photos.insert(pic, at: 0)
+                        let maxCnt = 5
+                        // 节省空间
+                        if self.photos.count > maxCnt {
+                            self.photos = Array(self.photos.prefix(maxCnt))
+                        }
                     }
                 }
             }

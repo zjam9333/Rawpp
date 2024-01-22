@@ -132,8 +132,6 @@ struct RAWSaveOption: OptionSet {
             return .raw
         case .raw:
             return [.raw, .heif]
-        case [.raw, .heif]:
-            return .apple
         default:
             return .heif
         }
@@ -142,13 +140,13 @@ struct RAWSaveOption: OptionSet {
     var title: String {
         var strs: [String] = []
         if contains([.apple]) {
-            strs.append("Apple")
+            strs.append("APPLE")
         }
         if contains([.raw]) {
-            strs.append("Raw")
+            strs.append("RAW")
         }
         if contains([.heif]) {
-            strs.append("Heif")
+            strs.append("HEIF")
         }
         return strs.joined(separator: "+")
     }
@@ -349,7 +347,7 @@ struct RawFilterProperties {
     var output = Output()
     
     struct Raw {
-        var boostAmount = CustomizeValue<Value>(name: "RawFilterProperties_boostAmount", default: 0.5, minValue: 0, maxValue: 1)
+        var boostAmount = CustomizeValue<Value>(name: "RawFilterProperties_boostAmount", default: 1, minValue: 0, maxValue: 1)
     }
     
     struct Output {
@@ -358,7 +356,7 @@ struct RawFilterProperties {
 }
 
 enum ImageTool {
-    static func rawFilter(photoData: Data, boostAmount: Float) -> CIRAWFilter? {
+    static func rawFilter(photoData: Data, boostAmount: Float = 1) -> CIRAWFilter? {
         guard let filter = CIRAWFilter(imageData: photoData, identifierHint: "raw") else {
             return nil
         }
