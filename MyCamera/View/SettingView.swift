@@ -14,7 +14,7 @@ struct SettingView: View {
     init(presenting: Binding<Bool>) {
         self._presenting = presenting
     }
-    @State private var sharedPropertyies = RawFilterProperties()
+    @StateObject private var sharedPropertyies = RawFilterProperties.shared
     
     var body: some View {
         NavigationView {

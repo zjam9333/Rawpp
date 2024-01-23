@@ -146,7 +146,7 @@ struct CameraView: View {
     }
     
     @ViewBuilder private var rawOptionView: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 10) {
             Button {
                 viewModel.touchFeedback()
                 if viewModel.rawOption.contains(.apple) {
@@ -354,7 +354,6 @@ struct CameraView: View {
                         .foregroundStyle(.white)
                 }
                 if let camera = viewModel.currentCamera {
-                    let cameraLens = String(format: camera.magnification >= 1 ? "X%.0f" : "X%.01f", camera.magnification)
                     let cameraPosition: String = {
                         switch (camera.device.position) {
                         case .back:
@@ -365,7 +364,7 @@ struct CameraView: View {
                             return "UNKNOWN"
                         }
                     }()
-                    Text("\(cameraPosition) \(cameraLens)")
+                    Text("\(cameraPosition)")
                         .font(.system(size: 12))
                         .foregroundStyle(.white)
                 }
@@ -374,9 +373,6 @@ struct CameraView: View {
             .padding(10)
             .clipShape(Rectangle())
             .onTapGesture {
-                if viewModel.rawOption.contains([.apple]) {
-                    return
-                }
                 viewModel.showSetting = true
             }
         }

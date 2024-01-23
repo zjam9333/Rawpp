@@ -89,7 +89,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             let currentDevice = ca2
             self?.currentCamera = ca2
             self?.allCameras = ca[currentDevice?.device.position ?? .back]?.map { d in
-                let title = String(format: d.magnification >= 1 ? "x%.0f" : "x%.01f", d.magnification)
+                let title = String(format: d.magnification >= 1 ? "%.0fX" : "%.01fX", d.magnification)
                 let selected = currentDevice?.device == d.device
                 let r = SelectItem(isSelected: selected, title: title) {
                     guard let self = self else {

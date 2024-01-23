@@ -340,11 +340,11 @@ struct CustomizeValue<Value> where Value: Comparable {
     }
 }
 
-struct RawFilterProperties {
+class RawFilterProperties: ObservableObject {
     typealias Value = Float
     
-    var raw = Raw()
-    var output = Output()
+    @Published var raw = Raw()
+    @Published var output = Output()
     
     struct Raw {
         var boostAmount = CustomizeValue<Value>(name: "RawFilterProperties_boostAmount", default: 1, minValue: 0, maxValue: 1)
@@ -353,11 +353,18 @@ struct RawFilterProperties {
     struct Output {
         var heifLossyCompressionQuality = CustomizeValue<Value>(name: "RawFilterProperties_heifLossyCompressionQuality", default: 0.7, minValue: 0.1, maxValue: 1)
     }
+    
+    private init(raw: Raw = Raw(), output: Output = Output()) {
+        self.raw = raw
+        self.output = output
+    }
+    
+    static let shared = RawFilterProperties()
 }
 
 enum ImageTool {
     static func rawFilter(photoData: Data, boostAmount: Float = 1) -> CIRAWFilter? {
-        guard let filter = CIRAWFilter(imageData: photoData, identifierHint: "raw") else {
+        guard let filter = CIRAWFilter(imageData: photoData, identifierHint: nil) else {
             return nil
         }
         filter.boostAmount = boostAmount

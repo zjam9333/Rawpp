@@ -74,7 +74,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         // Access the file data representation of this photo.
         // 优先使用raw转的jpeg data，避免苹果默认的处理
         print("RAW", "begin")
-        let customProperties = RawFilterProperties()
+        let customProperties = RawFilterProperties.shared
         print("RAW", "read properties")
         guard let rawFilter = ImageTool.rawFilter(photoData: photoData, boostAmount: customProperties.raw.boostAmount.value) else {
             return nil
