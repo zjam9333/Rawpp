@@ -206,7 +206,7 @@ class CameraService {
         }
     }
     
-    func capturePhoto(rawOption: RAWSaveOption, location: CLLocation?, flashMode: AVCaptureDevice.FlashMode) async -> Result<Photo?, AlertError> {
+    func capturePhoto(rawOption: RAWSaveOption, location: CLLocation?, flashMode: AVCaptureDevice.FlashMode, cropFactor: CGFloat) async -> Result<Photo?, AlertError> {
         guard let photoOutputConnection = photoOutput.connection(with: .video), photoOutputConnection.isActive, photoOutputConnection.isEnabled else {
             let err = AlertError(title: "Camera Error", message: "Camera Device is not Enabled", primaryButtonTitle: "OK", secondaryButtonTitle: "Cancel", primaryAction: nil, secondaryAction: nil)
             return .failure(err)
@@ -240,14 +240,14 @@ class CameraService {
             photoSettings.flashMode = flashMode
         }
         
-        let photo = await self.capturePhoto(photoSettings: photoSettings, rawOption: rawOption)
+        let photo = await self.capturePhoto(photoSettings: photoSettings, rawOption: rawOption, cropFactor: cropFactor)
         return .success(photo)
     }
     
-    private func capturePhoto(photoSettings: AVCapturePhotoSettings, rawOption: RAWSaveOption) async -> Photo? {
+    private func capturePhoto(photoSettings: AVCapturePhotoSettings, rawOption: RAWSaveOption, cropFactor: CGFloat) async -> Photo? {
         let photo = await withCheckedContinuation { con in
             // Create a delegate to monitor the capture process.
-            let delegate = RAWCaptureDelegate(option: rawOption) { phot in
+            let delegate = RAWCaptureDelegate(option: rawOption, cropFactor: cropFactor) { phot in
                 con.resume(returning: phot)
             }
             inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = delegate

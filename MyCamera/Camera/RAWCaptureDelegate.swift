@@ -11,13 +11,15 @@ import CoreImage.CIFilterBuiltins
 
 class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     
-    init(option: RAWSaveOption, didFinish: @escaping (Photo?) -> Void) {
+    init(option: RAWSaveOption, cropFactor: CGFloat, didFinish: @escaping (Photo?) -> Void) {
         self.saveOption = option
+        self.cropFactor = cropFactor
         self.didFinish = didFinish
         super.init()
     }
     
     let saveOption: RAWSaveOption
+    let cropFactor: CGFloat
     
     let didFinish: (Photo?) -> Void
     
@@ -84,6 +86,14 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             return nil
         }
         print("RAW", "outputed Image")
+        
+        if cropFactor > 1 {
+            let rect = ciimg.extent
+            let insetFac = (1 - 1 / cropFactor) / 2
+            let croppedRect = rect.insetBy(dx: rect.width * insetFac, dy: rect.height * insetFac)
+            ciimg = ciimg.cropped(to: croppedRect) // 直接裁了会损失原始数据，有其他办法？
+        }
+        
 //        ciimg = ciimg.settingProperties(photo.metadata)
         let autoOptions: [CIImageAutoAdjustmentOption: Any] = [
             // 只使用最基本的enhance

@@ -16,9 +16,9 @@ struct CameraView: View {
     var body: some View {
         
         VStack {
-            topActions
-            centerPreview
-            bottomActions
+            topActions.zIndex(10)
+            centerPreview.zIndex(1)
+            bottomActions.zIndex(10)
         }
         .preferredColorScheme(.dark)
         .fullScreenCover(isPresented: $viewModel.showPhoto) {
@@ -139,7 +139,6 @@ struct CameraView: View {
                 .frame(height: 24)
                 .border(.white, width: 1)
             }
-            
         }
         .frame(height: 64)
         .padding(.horizontal, 20)
@@ -181,11 +180,14 @@ struct CameraView: View {
     }
     
     @ViewBuilder private var centerPreview: some View {
-        
-        GeometryReader { geo in
-            ZStack {
+        let size = CGSize(width: UIScreen.main.bounds.size.width, height: UIScreen.main.bounds.size.width * 4 / 3)
+        Rectangle()
+            .fill(Color.clear)
+            .frame(width: size.width, height: size.height)
+            .overlay {
                 CameraVideoLayerPreview(session: viewModel.session)
-                    .aspectRatio(3 / 4, contentMode: .fill)
+                    .scaleEffect(viewModel.cropFactor.value, anchor: .center) // cropFactor先放大view，拍摄后再裁切图片
+                    .animation(.default, value: viewModel.cropFactor.value)
                     .clipped()
                     .border(.gray, width: 1)
                     .opacity(viewModel.isAppInBackground ? 0 : 1)
@@ -244,7 +246,7 @@ struct CameraView: View {
                 .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
                 .animation(viewModel.showingEVIndicators ? .default : .default.delay(1), value: viewModel.showingEVIndicators)
                 
-                gestureContainer(size: geo.size)
+                gestureContainer(size: size)
                 
                 if let timer = viewModel.timerSeconds {
                     let seconds = Int(timer.value) + 1
@@ -257,33 +259,61 @@ struct CameraView: View {
                                 .font(.system(size: 72))
                         }
                 } 
-                if viewModel.allCameras.count > 1 {
+                if viewModel.allCameras.count > 0 {
                     Color.clear.overlay(alignment: .bottom) {
-                        HStack(spacing: 4) {
-                            ForEach(viewModel.allCameras) { i in
-                                Button {
-                                    viewModel.touchFeedback()
-                                    i.selectionHandler()
-                                } label: {
-                                    Capsule(style: .circular)
-                                        .fill(.gray.opacity(i.isSelected ? 1 : 0))
-                                        .frame(width: 36, height: 30, alignment: .center)
-                                        .overlay {
-                                            Text(i.title)
-                                                .font(.system(size: 12))
-                                                .foregroundStyle(.white)
-                                        }
-                                }
-                            }
-                        }
-                        .padding(4)
-                        .background(Capsule(style: .circular).fill(.gray.opacity(0.5)))
-                        .padding()
+                        lensesSelection
                     }
                 }
             }
+    }
+    
+    @ViewBuilder private var lensesSelection: some View {
+        HStack(spacing: 4) {
+            ForEach(viewModel.allCameras) { i in
+                let isCurrent = i.object == viewModel.currentCamera
+                let canZoom = (i.object?.magnification ?? 0) == 1
+                Button {
+                    if isCurrent {
+                        guard canZoom else {
+                            return
+                        }
+                        switch viewModel.cropFactor.value {
+                        case 1..<1.1:
+                            viewModel.cropFactor.value = 1.1
+                        case 1.1..<1.2:
+                            viewModel.cropFactor.value = 1.2
+                        case 1.2..<1.4:
+                            viewModel.cropFactor.value = 1.4
+                        default:
+                            viewModel.cropFactor.value = 1
+                        }
+                    } else {
+                        viewModel.touchFeedback()
+                        i.selectionHandler()
+                        viewModel.cropFactor.value = 1
+                    }
+                } label: {
+                    Capsule(style: .circular)
+                        .fill(.gray.opacity(i.isSelected ? 1 : 0))
+                        .frame(width: 40, height: 30, alignment: .center)
+                        .overlay {
+                            Group {
+                                if let cam = i.object, isCurrent, canZoom, viewModel.cropFactor.value > 1 {
+                                    let mag = viewModel.cropFactor.value * CGFloat(cam.magnification)
+                                    Text(String(format: "%.01fX", mag) )
+                                } else {
+                                    Text(i.title)
+                                }
+                            }
+                            .font(.system(size: 12))
+                            .foregroundStyle(.white)
+                        }
+                }
+            }
         }
-        .frame(width: UIScreen.main.bounds.size.width, height: UIScreen.main.bounds.size.width * 4 / 3)
+        .padding(4)
+        .background(Capsule(style: .circular).fill(.gray.opacity(0.5)))
+        .padding()
     }
     
     @ViewBuilder private var bottomActions: some View {
@@ -307,7 +337,7 @@ struct CameraView: View {
                     }
                 }
             } else {
-                Rectangle().fill(.black)
+                Rectangle().fill(.clear)
                     .frame(width: 74, height: 74)
                     .overlay(alignment: .center) {
                         if viewModel.isProcessing {
@@ -490,6 +520,8 @@ struct LoadingView: UIViewRepresentable {
 struct CameraViewPreview: PreviewProvider {
     static var previews: some View {
         return CameraView()
+            .background(.gray)
+            .ignoresSafeArea()
             .border(.white, width: 1)
     }
 }

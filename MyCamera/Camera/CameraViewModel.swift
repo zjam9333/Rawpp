@@ -40,10 +40,12 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     @Published var currentCamera: CameraDevice?
     
-    @Published var allCameras: [SelectItem] = []
+    @Published var allCameras: [SelectItem<CameraDevice>] = []
     
     @Published var showingEVIndicators = false
     @Published var isAppInBackground = false
+    
+    @Published var cropFactor: CustomizeValue<CGFloat> = .init(name: "CustomizeValue_cropFactor", default: 1, minValue: 1, maxValue: 2)
     
     private let feedbackGenerator = UISelectionFeedbackGenerator()
     
@@ -91,7 +93,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             self?.allCameras = ca[currentDevice?.device.position ?? .back]?.map { d in
                 let title = String(format: d.magnification >= 1 ? "%.0fX" : "%.01fX", d.magnification)
                 let selected = currentDevice?.device == d.device
-                let r = SelectItem(isSelected: selected, title: title) {
+                let r = SelectItem(isSelected: selected, title: title, object: d) {
                     guard let self = self else {
                         return
                     }
@@ -182,7 +184,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             await MainActor.run {
                 isProcessing = true
             }
-            let result = await service.capturePhoto(rawOption: rawOption, location: lastLocation, flashMode: isFlashOn ? .on : .off)
+            let result = await service.capturePhoto(rawOption: rawOption, location: lastLocation, flashMode: isFlashOn ? .on : .off, cropFactor: max(cropFactor.value, 1))
             await MainActor.run {
                 isProcessing = false
             }
