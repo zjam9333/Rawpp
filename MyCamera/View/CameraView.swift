@@ -259,7 +259,7 @@ struct CameraView: View {
                                 .font(.system(size: 72))
                         }
                 } 
-                if viewModel.allCameras.count > 0 {
+                if viewModel.allLenses.count > 0 {
                     Color.clear.overlay(alignment: .bottom) {
                         lensesSelection
                     }
@@ -269,50 +269,27 @@ struct CameraView: View {
     
     @ViewBuilder private var lensesSelection: some View {
         HStack(spacing: 4) {
-            ForEach(viewModel.allCameras) { i in
-                let isCurrent = i.object == viewModel.currentCamera
-                let canZoom = (i.object?.magnification ?? 0) == 1
+            ForEach(viewModel.allLenses) { i in
                 Button {
-                    if isCurrent {
-                        guard canZoom else {
-                            return
-                        }
-                        switch viewModel.cropFactor.value {
-                        case 1..<1.1:
-                            viewModel.cropFactor.value = 1.1
-                        case 1.1..<1.2:
-                            viewModel.cropFactor.value = 1.2
-                        case 1.2..<1.4:
-                            viewModel.cropFactor.value = 1.4
-                        default:
-                            viewModel.cropFactor.value = 1
-                        }
-                    } else {
-                        viewModel.touchFeedback()
-                        i.selectionHandler()
-                        viewModel.cropFactor.value = 1
-                    }
+                    viewModel.touchFeedback()
+                    i.selectionHandler()
                 } label: {
-                    Capsule(style: .circular)
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
                         .fill(.gray.opacity(i.isSelected ? 1 : 0))
-                        .frame(width: 40, height: 30, alignment: .center)
+                        .frame(width: i.isSelected ? 40 : 36, height: 30, alignment: .center)
                         .overlay {
-                            Group {
-                                if let cam = i.object, isCurrent, canZoom, viewModel.cropFactor.value > 1 {
-                                    let mag = viewModel.cropFactor.value * CGFloat(cam.magnification)
-                                    Text(String(format: "%.01fX", mag) )
-                                } else {
-                                    Text(i.title)
-                                }
-                            }
-                            .font(.system(size: 12))
-                            .foregroundStyle(.white)
+                            Text(i.title)
+                                .font(.system(size: 12))
+                                .foregroundStyle(.white)
                         }
                 }
             }
         }
         .padding(4)
-        .background(Capsule(style: .circular).fill(.gray.opacity(0.5)))
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(.gray.opacity(0.5))
+        )
         .padding()
     }
     

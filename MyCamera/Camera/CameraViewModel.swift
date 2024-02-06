@@ -40,7 +40,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     @Published var currentCamera: CameraDevice?
     
-    @Published var allCameras: [SelectItem<CameraDevice>] = []
+    @Published var allLenses: [SelectItem<CameraDevice>] = []
     
     @Published var showingEVIndicators = false
     @Published var isAppInBackground = false
@@ -87,23 +87,51 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
         }.store(in: &subscriptions)
         
-        service.$allCameras.combineLatest(service.$currentCamera).receive(on: DispatchQueue.main).sink { [weak self] ca, ca2 in
-            let currentDevice = ca2
-            self?.currentCamera = ca2
-            self?.allCameras = ca[currentDevice?.device.position ?? .back]?.map { d in
-                let title = String(format: d.magnification >= 1 ? "%.0fX" : "%.01fX", d.magnification)
-                let selected = currentDevice?.device == d.device
-                let r = SelectItem(isSelected: selected, title: title, object: d) {
-                    guard let self = self else {
-                        return
+        service.$allCameras.combineLatest(service.$currentCamera).combineLatest($cropFactor).receive(on: DispatchQueue.main).sink { [weak self] obj in
+            let currentDevice = obj.0.1
+            self?.currentCamera = obj.0.1
+            let allLenses: [SelectItem<CameraDevice>] = obj.0.0[currentDevice?.device.position ?? .back]?.map { d in
+                let deviceSelected = currentDevice == d
+                var thisLenesSelections: [SelectItem<CameraDevice>] = []
+                do {
+                    // 实际的摄像头
+                    let title = String(format: d.magnification >= 1 ? "%.01fX" : "%.01fX", d.magnification)
+                    let selected = deviceSelected && self?.cropFactor.value == 1
+                    let this = SelectItem(id: "\(d)-", isSelected: selected, title: title, object: d) {
+                        guard let self = self else {
+                            return
+                        }
+                        self.cropFactor.value = 1
+                        guard !deviceSelected else {
+                            return
+                        }
+                        Task {
+                            await self.service.selectedCamera(d)
+                            await self.setExposure()
+                        }
                     }
-                    Task {
-                        await self.service.selectedCamera(d)
-                        await self.setExposure()
+                    thisLenesSelections.append(this)
+                }
+                if deviceSelected && d.magnification >= 1 {
+                    // 拓展几个缩放倍数，没有实际切换摄像头
+                    let factors: [CGFloat] = [1.1, 1.2, 1.4]
+                    for factor in factors {
+                        let title = String(format: "%.01fX", CGFloat(d.magnification) * factor)
+                        let selected = self?.cropFactor.value == factor
+                        let croppedOption = SelectItem(id: "\(d)-\(factor)", isSelected: selected, title: title, object: d) {
+                            guard let self = self else {
+                                return
+                            }
+                            self.cropFactor.value = factor
+                        }
+                        thisLenesSelections.append(croppedOption)
                     }
                 }
-                return r
+                return thisLenesSelections
+            }.flatMap { i in
+                i
             } ?? []
+            self?.allLenses = allLenses
         }
         .store(in: &self.subscriptions)
         

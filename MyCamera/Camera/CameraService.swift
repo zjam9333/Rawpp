@@ -36,11 +36,18 @@ class CameraService {
                 return d.device.deviceType == .builtInWideAngleCamera
             }?.fov ?? 60
             devices = devices.map { d in
+                if d.fov == oneAng {
+                    return d
+                }
                 var d = d
                 if d.fov <= 0 {
                     return d
                 }
-                d.magnification = oneAng / d.fov
+//                d.magnification = oneAng / d.fov
+                d.magnification = atan(oneAng / 2 * .pi / 180) / atan(d.fov / 2 * .pi / 180)
+                if d.magnification >= 1 {
+                    d.magnification.round()
+                }
                 return d
             }
             return devices

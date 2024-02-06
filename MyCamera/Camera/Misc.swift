@@ -389,7 +389,7 @@ struct CameraDevice: Equatable {
 }
 
 struct SelectItem<T>: Identifiable {
-    let id = UUID()
+    var id: String = UUID().uuidString
     let isSelected: Bool
     let title: String
     let object: T?
