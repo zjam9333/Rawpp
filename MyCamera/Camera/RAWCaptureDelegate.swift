@@ -47,7 +47,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
         guard photo.isRawPhoto else {
             // apple处理的heic版本
-            let notRawData = rawData
+            let notRawData = await handleNotRawOutput(photoData: rawData) ?? rawData
             savePhotoData(notRawData)
             return notRawData
         }
@@ -72,6 +72,19 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
     }
     
+    func handleNotRawOutput(photoData: Data) async -> Data? {
+        guard var ciimg = CIImage(data: photoData) else {
+            return nil
+        }
+        if cropFactor > 1 {
+            ciimg = ciimg.croppedImage(cropFactor: cropFactor)
+        }
+        let customProperties = RawFilterProperties.shared
+        let heif = ImageTool.heifData(ciimage: ciimg, quality: customProperties.output.heifLossyCompressionQuality.value)
+        print("RAW", "heif")
+        return heif
+    }
+    
     func handleRawOutput(photoData: Data) async -> Data? {
         // Access the file data representation of this photo.
         // 优先使用raw转的jpeg data，避免苹果默认的处理
@@ -88,10 +101,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         print("RAW", "outputed Image")
         
         if cropFactor > 1 {
-            let rect = ciimg.extent
-            let insetFac = (1 - 1 / cropFactor) / 2
-            let croppedRect = rect.insetBy(dx: rect.width * insetFac, dy: rect.height * insetFac)
-            ciimg = ciimg.cropped(to: croppedRect) // 直接裁了会损失原始数据，有其他办法？
+            ciimg = ciimg.croppedImage(cropFactor: cropFactor)
         }
         
 //        ciimg = ciimg.settingProperties(photo.metadata)
@@ -113,5 +123,21 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         let heif = ImageTool.heifData(ciimage: ciimg, quality: customProperties.output.heifLossyCompressionQuality.value)
         print("RAW", "heif")
         return heif
+    }
+}
+
+extension CIImage {
+    func croppedImage(cropFactor: CGFloat) -> CIImage {
+        let croppedRect = extent.cropped(cropFactor: cropFactor)
+        let ciimg = cropped(to: croppedRect) // 直接裁了会损失原始数据，有其他办法？
+        return ciimg
+    }
+}
+
+extension CGRect {
+    func cropped(cropFactor: CGFloat) -> CGRect {
+        let insetFac = (1 - 1 / cropFactor) / 2
+        let croppedRect = self.insetBy(dx: self.width * insetFac, dy: self.height * insetFac)
+        return croppedRect
     }
 }
