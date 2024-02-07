@@ -34,7 +34,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var exposureMode = ExposureMode.auto
     @Published var exposureValue: ExposureValue = .zero
     @Published var shutterSpeed: ShutterSpeed = .percent100
-    @Published var ISO: ISOValue = .iso100
+    @Published var ISO: ISOValue = .iso400
     
     @Published var videoOrientation: AVCaptureVideoOrientation = .portrait
     

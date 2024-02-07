@@ -202,9 +202,9 @@ class CameraService {
         }
         var photoSettings: AVCapturePhotoSettings = AVCapturePhotoSettings(format: [
             AVVideoCodecKey: AVVideoCodecType.hevc,
-            AVVideoCompressionPropertiesKey: [
-                AVVideoQualityKey: RawFilterProperties.shared.output.heifLossyCompressionQuality.value,
-            ]
+//            AVVideoCompressionPropertiesKey: [
+//                AVVideoQualityKey: RawFilterProperties.shared.output.heifLossyCompressionQuality.value,
+//            ]
         ])
         photoSettings.photoQualityPrioritization = .speed
         photoSettings.isAutoVirtualDeviceFusionEnabled = false

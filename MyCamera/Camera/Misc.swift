@@ -126,31 +126,6 @@ struct RAWSaveOption: OptionSet {
         return contains(.apple) || contains(.heif)
     }
     
-    var next: RAWSaveOption {
-        switch self {
-        case .heif:
-            return .raw
-        case .raw:
-            return [.raw, .heif]
-        default:
-            return .heif
-        }
-    }
-    
-    var title: String {
-        var strs: [String] = []
-        if contains([.apple]) {
-            strs.append("APPLE")
-        }
-        if contains([.raw]) {
-            strs.append("RAW")
-        }
-        if contains([.heif]) {
-            strs.append("HEIF")
-        }
-        return strs.joined(separator: "+")
-    }
-    
     static var cachedRawOption: RAWSaveOption {
         get {
             guard let value = UserDefaults.standard.value(forKey: "CameraViewModelCachedRawOption") as? UInt8, value > 0 else {
@@ -172,6 +147,7 @@ struct ISOValue: Equatable, Hashable {
         return Float(rawValue)
     }
     
+    static let iso400: ISOValue = .init(rawValue: 400)
     static let iso100: ISOValue = .init(rawValue: 100)
     
     static let presets: [ISOValue] = {

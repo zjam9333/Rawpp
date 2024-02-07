@@ -127,9 +127,10 @@ struct CameraView: View {
                 Group {
                     switch viewModel.exposureMode {
                     case .auto:
-                        Text("AE")
+                        Text("AUTO")
+                            .foregroundStyle(.green)
                     case .manual:
-                        Text("MANUAL")
+                        Text("MAN")
                             .foregroundStyle(.red)
                     }
                 }
@@ -161,18 +162,34 @@ struct CameraView: View {
                     .padding(.vertical, 5)
                     .frame(height: 24)
             }
-            if viewModel.rawOption.contains(.apple) == false {
-                Button {
-                    viewModel.touchFeedback()
-                    viewModel.rawOption = viewModel.rawOption.next
-                } label: {
-                    Text(viewModel.rawOption.title)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.white)
-                        .padding(.vertical, 5)
-                        .frame(height: 24)
+            
+            Button {
+                viewModel.touchFeedback()
+                switch viewModel.rawOption {
+                case .heif:
+                    viewModel.rawOption = .raw
+                case .raw:
+                    viewModel.rawOption = [.raw, .heif]
+                default:
+                    viewModel.rawOption = .heif
                 }
-                .animation(nil, value: viewModel.rawOption)
+            } label: {
+                var title: String {
+                    if viewModel.rawOption.contains([.heif, .raw]) {
+                        return "R+H"
+                    } else if viewModel.rawOption.contains(.raw) {
+                        return "RAW"
+                    } else if viewModel.rawOption.contains(.heif) {
+                        return "HEIF"
+                    }
+                    return ""
+                }
+                Text(title)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white)
+                    .strikethrough(viewModel.rawOption.contains(.apple), color: .yellow)
+                    .padding(.vertical, 5)
+                    .frame(height: 24)
             }
         }
         .padding(.horizontal, 5)
@@ -363,24 +380,10 @@ struct CameraView: View {
                         .font(.system(size: 12))
                         .foregroundStyle(.white)
                 }
-                if let camera = viewModel.currentCamera {
-                    let cameraPosition: String = {
-                        switch (camera.device.position) {
-                        case .back:
-                            return "BACK"
-                        case .front:
-                            return "FRONT"
-                        default:
-                            return "UNKNOWN"
-                        }
-                    }()
-                    Text("\(cameraPosition)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.white)
-                }
             }
             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             .padding(10)
+            .padding(.trailing, 6)
             .clipShape(Rectangle())
             .onTapGesture {
                 viewModel.showSetting = true
@@ -437,7 +440,7 @@ struct CameraView: View {
             @MainActor func resetExposure() async {
                 viewModel.exposureValue = .zero
                 viewModel.shutterSpeed = .percent100
-                viewModel.ISO = .iso100
+                viewModel.ISO = .iso400
                 viewModel.showingEVIndicators = true
                 try? await Task.sleep(nanoseconds: 0_010_000_000)
                 viewModel.showingEVIndicators = false
@@ -500,9 +503,9 @@ struct LoadingView: UIViewRepresentable {
 struct CameraViewPreview: PreviewProvider {
     static var previews: some View {
         return CameraView()
-            .background(.gray)
             .ignoresSafeArea()
             .border(.white, width: 1)
+            .background(.black)
     }
 }
 

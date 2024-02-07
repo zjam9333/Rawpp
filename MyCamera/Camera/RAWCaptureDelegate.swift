@@ -21,6 +21,8 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     let saveOption: RAWSaveOption
     let cropFactor: CGFloat
     
+    let customProperties = RawFilterProperties.shared
+    
     let didFinish: (Photo?) -> Void
     
     func photoOutput(_ output: AVCapturePhotoOutput, willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings) {
@@ -73,38 +75,41 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     }
     
     func handleNotRawOutput(photoData: Data) async -> Data? {
-        guard var ciimg = CIImage(data: photoData) else {
+        guard let ciimg = CIImage(data: photoData) else {
             return nil
         }
-        if cropFactor > 1 {
-            ciimg = ciimg.croppedImage(cropFactor: cropFactor)
-        }
-        let customProperties = RawFilterProperties.shared
-        let heif = ImageTool.heifData(ciimage: ciimg, quality: customProperties.output.heifLossyCompressionQuality.value)
-        print("RAW", "heif")
-        return heif
+        return await basicCIImageAdjustmentOutput(ciimg: ciimg)
     }
     
     func handleRawOutput(photoData: Data) async -> Data? {
         // Access the file data representation of this photo.
         // 优先使用raw转的jpeg data，避免苹果默认的处理
         print("RAW", "begin")
-        let customProperties = RawFilterProperties.shared
         print("RAW", "read properties")
         guard let rawFilter = ImageTool.rawFilter(photoData: photoData, boostAmount: customProperties.raw.boostAmount.value) else {
             return nil
         }
         print("RAW", "filter created")
-        guard var ciimg = rawFilter.outputImage else {
+        guard let ciimg = rawFilter.outputImage else {
             return nil
         }
         print("RAW", "outputed Image")
+        return await basicCIImageAdjustmentOutput(ciimg: ciimg)
+    }
+    
+    private func basicCIImageAdjustmentOutput(ciimg: CIImage) async -> Data? {
+        var ciimg = ciimg
         
+        // 裁切
         if cropFactor > 1 {
-            ciimg = ciimg.croppedImage(cropFactor: cropFactor)
+            print("CIImage", "cropFactor", cropFactor)
+            let insetFac = (1 - 1 / cropFactor) / 2
+            let extent = ciimg.extent
+            let croppedRect = extent.insetBy(dx: extent.width * insetFac, dy: extent.height * insetFac)
+            ciimg = ciimg.cropped(to: croppedRect) // 直接裁了会损失原始数据，有其他办法？
         }
         
-//        ciimg = ciimg.settingProperties(photo.metadata)
+        // 自动调整
         let autoOptions: [CIImageAutoAdjustmentOption: Any] = [
             // 只使用最基本的enhance
             .enhance: true,
@@ -114,30 +119,16 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             .crop: false,
         ]
         let adjustments = ciimg.autoAdjustmentFilters(options: autoOptions)
-        print("RAW", "autoAdjustmentFilters created", adjustments)
+        print("CIImage", "autoAdjustmentFilters created", adjustments)
         for fil in adjustments {
             fil.setValue(ciimg, forKey: kCIInputImageKey)
             ciimg = fil.outputImage ?? ciimg
         }
-        print("RAW", "autoAdjustmentFilters used")
+        print("CIImage", "autoAdjustmentFilters used")
+        
+        // 输出heif
         let heif = ImageTool.heifData(ciimage: ciimg, quality: customProperties.output.heifLossyCompressionQuality.value)
-        print("RAW", "heif")
+        print("CIImage", "output heif")
         return heif
-    }
-}
-
-extension CIImage {
-    func croppedImage(cropFactor: CGFloat) -> CIImage {
-        let croppedRect = extent.cropped(cropFactor: cropFactor)
-        let ciimg = cropped(to: croppedRect) // 直接裁了会损失原始数据，有其他办法？
-        return ciimg
-    }
-}
-
-extension CGRect {
-    func cropped(cropFactor: CGFloat) -> CGRect {
-        let insetFac = (1 - 1 / cropFactor) / 2
-        let croppedRect = self.insetBy(dx: self.width * insetFac, dy: self.height * insetFac)
-        return croppedRect
     }
 }
