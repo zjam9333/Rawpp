@@ -27,28 +27,10 @@ class CameraService {
         ]
         allCameras = deviceDiscoveries.compactMapValues { session in
             let des = session.devices
-            var devices = des.map { d in
+            let devices = des.map { d in
                 let format = d.activeFormat
                 print("Device Found", d, format)
                 return CameraDevice(device: d, fov: format.videoFieldOfView)
-            }
-            let oneAng = devices.first { d in
-                return d.device.deviceType == .builtInWideAngleCamera
-            }?.fov ?? 60
-            devices = devices.map { d in
-                if d.fov == oneAng {
-                    return d
-                }
-                var d = d
-                if d.fov <= 0 {
-                    return d
-                }
-//                d.magnification = oneAng / d.fov
-                d.magnification = atan(oneAng / 2 * .pi / 180) / atan(d.fov / 2 * .pi / 180)
-                if d.magnification >= 1 {
-                    d.magnification.round()
-                }
-                return d
             }
             return devices
         }

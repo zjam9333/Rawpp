@@ -381,18 +381,30 @@ enum ImageTool {
 struct CameraDevice: Equatable {
     let device: AVCaptureDevice
     let fov: Float
-    var magnification: Float = 1
+    let focalLength: Float
+    init(device: AVCaptureDevice, fov: Float) {
+        self.device = device
+        self.fov = fov
+        guard fov > 1 else {
+            focalLength = 0
+            return
+        }
+        let fullFrame: Float = 36 // full frame 36*24, diagonal = 43
+        let radianFov = fov / 180 * .pi
+        let len = fullFrame / 2 / tan(radianFov / 2)
+        focalLength = len
+    }
     
     static func ==(left: CameraDevice, right: CameraDevice) -> Bool {
         return left.device == right.device
     }
 }
 
-struct SelectItem<T>: Identifiable {
+struct SelectItem: Identifiable {
     var id: String = UUID().uuidString
     let isSelected: Bool
+    let isMain: Bool
     let title: String
-    let object: T?
     let selectionHandler: () -> Void
 }
 

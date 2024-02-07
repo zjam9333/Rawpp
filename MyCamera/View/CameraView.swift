@@ -281,6 +281,9 @@ struct CameraView: View {
                             Text(i.title)
                                 .font(.system(size: 12))
                                 .foregroundStyle(.white)
+                            if i.isMain {
+                                Color.yellow.frame(width: 10, height: 1).offset(y: 8)
+                            }
                         }
                 }
             }

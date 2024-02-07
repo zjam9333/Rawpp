@@ -40,7 +40,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     @Published var currentCamera: CameraDevice?
     
-    @Published var allLenses: [SelectItem<CameraDevice>] = []
+    @Published var allLenses: [SelectItem] = []
     
     @Published var showingEVIndicators = false
     @Published var isAppInBackground = false
@@ -90,14 +90,14 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         service.$allCameras.combineLatest(service.$currentCamera).combineLatest($cropFactor).receive(on: DispatchQueue.main).sink { [weak self] obj in
             let currentDevice = obj.0.1
             self?.currentCamera = obj.0.1
-            let allLenses: [SelectItem<CameraDevice>] = obj.0.0[currentDevice?.device.position ?? .back]?.map { d in
+            let allLenses: [SelectItem] = obj.0.0[currentDevice?.device.position ?? .back]?.map { d in
                 let deviceSelected = currentDevice == d
-                var thisLenesSelections: [SelectItem<CameraDevice>] = []
+                var thisLenesSelections: [SelectItem] = []
                 do {
                     // 实际的摄像头
-                    let title = String(format: d.magnification >= 1 ? "%.01fX" : "%.01fX", d.magnification)
+                    let title = String(format: "%.0f", ceil(d.focalLength))
                     let selected = deviceSelected && self?.cropFactor.value == 1
-                    let this = SelectItem(id: "\(d)-", isSelected: selected, title: title, object: d) {
+                    let this = SelectItem(id: "\(d)-", isSelected: selected, isMain: true, title: title) {
                         guard let self = self else {
                             return
                         }
@@ -112,13 +112,13 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                     }
                     thisLenesSelections.append(this)
                 }
-                if deviceSelected && d.magnification >= 1 {
+                if deviceSelected && d.focalLength > 20 {
                     // 拓展几个缩放倍数，没有实际切换摄像头
                     let factors: [CGFloat] = [1.1, 1.2, 1.4]
                     for factor in factors {
-                        let title = String(format: "%.01fX", CGFloat(d.magnification) * factor)
+                        let title = String(format: "%.0f", ceil(CGFloat(d.focalLength) * factor))
                         let selected = self?.cropFactor.value == factor
-                        let croppedOption = SelectItem(id: "\(d)-\(factor)", isSelected: selected, title: title, object: d) {
+                        let croppedOption = SelectItem(id: "\(d)-\(factor)", isSelected: selected, isMain: false, title: title) {
                             guard let self = self else {
                                 return
                             }
