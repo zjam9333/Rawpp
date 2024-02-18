@@ -11,19 +11,22 @@ import CoreImage.CIFilterBuiltins
 
 class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     
-    init(option: RAWSaveOption, cropFactor: CGFloat, didFinish: @escaping (Photo?) -> Void) {
-        self.saveOption = option
-        self.cropFactor = cropFactor
+    init(custom: Custom, didFinish: @escaping (Photo?) -> Void) {
+        self.custom = custom
         self.didFinish = didFinish
         super.init()
     }
     
-    let saveOption: RAWSaveOption
-    let cropFactor: CGFloat
+    private var custom: Custom
     
-    let customProperties = RawFilterProperties.shared
+    struct Custom {
+        var saveOption: RAWSaveOption
+        var cropFactor: CGFloat
+        var location: CLLocation?
+        fileprivate let customProperties = RawFilterProperties.shared
+    }
     
-    let didFinish: (Photo?) -> Void
+    private let didFinish: (Photo?) -> Void
     
     func photoOutput(_ output: AVCapturePhotoOutput, willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings) {
         // dispose system shutter sound
@@ -43,7 +46,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
     }
     
-    func processPhoto(_ photo: AVCapturePhoto, error: Error?) async -> Data? {
+    private func processPhoto(_ photo: AVCapturePhoto, error: Error?) async -> Data? {
         guard let rawData = photo.fileDataRepresentation(), error == nil else {
             return nil
         }
@@ -53,6 +56,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             savePhotoData(notRawData)
             return notRawData
         }
+        let saveOption = custom.saveOption
         if saveOption.saveRAW {
             savePhotoData(rawData)
         }
@@ -67,26 +71,29 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     }
     
     func savePhotoData(_ data: Data) {
+        let location = custom.location
         Task {
             try? await PHPhotoLibrary.shared().performChanges {
-                PHAssetCreationRequest.forAsset().addResource(with: .photo, data: data, options: nil)
+                let request = PHAssetCreationRequest.forAsset()
+                request.addResource(with: .photo, data: data, options: nil)
+                request.location = location
             }
         }
     }
     
-    func handleNotRawOutput(photoData: Data) async -> Data? {
+    private func handleNotRawOutput(photoData: Data) async -> Data? {
         guard let ciimg = CIImage(data: photoData) else {
             return nil
         }
         return await basicCIImageAdjustmentOutput(ciimg: ciimg)
     }
     
-    func handleRawOutput(photoData: Data) async -> Data? {
+    private func handleRawOutput(photoData: Data) async -> Data? {
         // Access the file data representation of this photo.
         // 优先使用raw转的jpeg data，避免苹果默认的处理
         print("RAW", "begin")
         print("RAW", "read properties")
-        guard let rawFilter = ImageTool.rawFilter(photoData: photoData, boostAmount: customProperties.raw.boostAmount.value) else {
+        guard let rawFilter = ImageTool.rawFilter(photoData: photoData, boostAmount: custom.customProperties.raw.boostAmount.value) else {
             return nil
         }
         print("RAW", "filter created")
@@ -101,6 +108,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         var ciimg = ciimg
         
         // 裁切
+        let cropFactor = custom.cropFactor
         if cropFactor > 1 {
             print("CIImage", "cropFactor", cropFactor)
             let insetFac = (1 - 1 / cropFactor) / 2
@@ -127,6 +135,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         print("CIImage", "autoAdjustmentFilters used")
         
         // 输出heif
+        let customProperties = custom.customProperties
         let heif = ImageTool.heifData(ciimage: ciimg, quality: customProperties.output.heifLossyCompressionQuality.value)
         print("CIImage", "output heif")
         return heif

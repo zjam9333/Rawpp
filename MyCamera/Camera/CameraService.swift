@@ -218,33 +218,33 @@ class CameraService {
             }
         }
         
-        if let location = location {
-            photoSettings.metadata[kCGImagePropertyGPSDictionary as String] = [
-                kCGImagePropertyGPSLatitude as String: location.coordinate.latitude,
-                kCGImagePropertyGPSLongitude as String: location.coordinate.longitude,
-            ]
-//         这部分很难弄，很多信息要填
-        }
+//        if let location = location {
+//            photoSettings.metadata[kCGImagePropertyGPSDictionary as String] = [
+//                kCGImagePropertyGPSLatitude as String: location.coordinate.latitude,
+//                kCGImagePropertyGPSLongitude as String: location.coordinate.longitude,
+//            ]
+////         这部分很难弄，很多信息要填
+//        }
         if videoDeviceInput?.device.isFlashAvailable == true {
             photoSettings.flashMode = flashMode
         }
         
-        let photo = await self.capturePhoto(photoSettings: photoSettings, rawOption: rawOption, cropFactor: cropFactor)
-        return .success(photo)
-    }
-    
-    private func capturePhoto(photoSettings: AVCapturePhotoSettings, rawOption: RAWSaveOption, cropFactor: CGFloat) async -> Photo? {
-        let photo = await withCheckedContinuation { con in
-            // Create a delegate to monitor the capture process.
-            let delegate = RAWCaptureDelegate(option: rawOption, cropFactor: cropFactor) { phot in
-                con.resume(returning: phot)
+        func capturePhoto() async -> Photo? {
+            let photo = await withCheckedContinuation { con in
+                let custom = RAWCaptureDelegate.Custom(saveOption: rawOption, cropFactor: cropFactor, location: location)
+                let delegate = RAWCaptureDelegate(custom: custom) { phot in
+                    con.resume(returning: phot)
+                }
+                inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = delegate
+                
+                // Tell the output to capture the photo.
+                photoOutput.capturePhoto(with: photoSettings, delegate: delegate)
             }
-            inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = delegate
-            
-            // Tell the output to capture the photo.
-            photoOutput.capturePhoto(with: photoSettings, delegate: delegate)
+            self.inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = nil
+            return photo
         }
-        self.inProgressPhotoCaptureDelegates[photoSettings.uniqueID] = nil
-        return photo
+        
+        let photo = await capturePhoto()
+        return .success(photo)
     }
 }
