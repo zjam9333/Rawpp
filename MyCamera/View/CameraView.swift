@@ -13,6 +13,8 @@ import SwiftUI
 struct CameraView: View {
     @StateObject var viewModel = CameraViewModel()
     
+    @StateObject private var sharedPropertyies = RawFilterProperties.shared
+    
     var body: some View {
         
         VStack {
@@ -380,6 +382,9 @@ struct CameraView: View {
                         .font(.system(size: 12))
                         .foregroundStyle(.white)
                 }
+                Text("\(sharedPropertyies.output.maxMegaPixel.value.rawValue)MP")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white)
             }
             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             .padding(10)

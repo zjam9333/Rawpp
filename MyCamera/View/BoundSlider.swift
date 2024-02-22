@@ -1,5 +1,5 @@
 //
-//  SingleSlider.swift
+//  BoundSlider.swift
 //  JpegGreen
 //
 //  Created by zjj on 2023/12/14.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct SingleSlider<Bound>: View where Bound: BinaryFloatingPoint {
+struct BoundSlider<Bound>: View where Bound: BinaryFloatingPoint {
     @Binding var value: Bound
     let range: ClosedRange<Bound>
     var foregroundColor: Color = .blue

@@ -275,7 +275,37 @@ extension AVCaptureVideoOrientation {
     }
 }
 
-struct CustomizeValue<Value> where Value: Comparable {
+struct CustomizeMapValue<Value, MappedValue>: Equatable where Value: Comparable, MappedValue: Comparable {
+    static func == (lhs: CustomizeMapValue<Value, MappedValue>, rhs: CustomizeMapValue<Value, MappedValue>) -> Bool {
+        return lhs.wrapObject == rhs.wrapObject
+    }
+    
+    private let mapSetter: (Value) -> MappedValue
+    private let mapGetter: (MappedValue) -> Value
+    
+    init(name: String, default: Value, minValue: Value, maxValue: Value, set: @escaping (Value) -> MappedValue, get: @escaping (MappedValue) -> Value) {
+        self.mapSetter = set
+        self.mapGetter = get
+        self.wrapObject = .init(name: name, default: set(`default`), minValue: set(minValue), maxValue: set(maxValue))
+    }
+    
+    var value: Value {
+        set {
+            wrapObject.value = mapSetter(newValue)
+        }
+        get {
+            return mapGetter(wrapObject.value)
+        }
+    }
+    
+    var `default`: Value {
+        return mapGetter(wrapObject.default)
+    }
+    
+    private var wrapObject: CustomizeValue<MappedValue>
+}
+
+struct CustomizeValue<Value>: Equatable where Value: Comparable {
     
     let name: String
     let `default`: Value
@@ -328,6 +358,12 @@ class RawFilterProperties: ObservableObject {
     
     struct Output {
         var heifLossyCompressionQuality = CustomizeValue<Value>(name: "RawFilterProperties_heifLossyCompressionQuality", default: 0.7, minValue: 0.1, maxValue: 1)
+        
+        var maxMegaPixel = CustomizeMapValue<MegaPixel, Int64>(name: "RawFilterProperties_maxMegaPixel", default: .m12, minValue: .lowest, maxValue: .highest) { p in
+            return p.rawValue
+        } get: { v in
+            return .init(rawValue: v) ?? .m12
+        }
     }
     
     private init(raw: Raw = Raw(), output: Output = Output()) {
@@ -387,4 +423,43 @@ struct SelectItem: Identifiable {
 enum Result<A, B> {
     case success(A)
     case failure(B)
+}
+
+enum MegaPixel: Int64, Comparable, CaseIterable {
+    static func < (lhs: MegaPixel, rhs: MegaPixel) -> Bool {
+        return lhs.rawValue < rhs.rawValue
+    }
+    
+    static let lowest: MegaPixel = .m5
+    static let highest: MegaPixel = .m48
+    
+    case m5 = 5
+    case m6 = 6
+    case m8 = 8
+    case m10 = 10
+    case m12 = 12
+    case m16 = 16
+    case m20 = 20
+    case m24 = 24
+    case m32 = 32
+    case m48 = 48
+    
+    func scaleFrom(originalSize: CGSize) -> CGFloat {
+        // w * s * h * s = newPixel
+        // w * h = oldPixel
+        let oldPixels = originalSize.width * originalSize.height
+        guard oldPixels > 0 else {
+            return 1
+        }
+        let newPixels = CGFloat(rawValue * 1_000_000)
+        let s = sqrt(newPixels / oldPixels)
+        return s
+    }
+}
+
+enum ScaleInterpolation {
+    case linear
+    case nearest
+    case lanczos
+    case bicubic
 }

@@ -134,6 +134,29 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
         print("CIImage", "autoAdjustmentFilters used")
         
+        let megaPixelScale = custom.customProperties.output.maxMegaPixel.value.scaleFrom(originalSize: ciimg.extent.size)
+        if megaPixelScale < 0.90 && megaPixelScale > 0 {
+            let method = ScaleInterpolation.linear
+            switch method {
+            case .linear:
+                ciimg = ciimg.samplingLinear()
+                    .transformed(by: .init(scaleX: megaPixelScale, y: megaPixelScale))
+            case .nearest:
+                ciimg = ciimg.samplingNearest()
+                    .transformed(by: .init(scaleX: megaPixelScale, y: megaPixelScale))
+            case .lanczos:
+                let scaleFilter = CIFilter.lanczosScaleTransform()
+                scaleFilter.scale = .init(megaPixelScale)
+                scaleFilter.inputImage = ciimg
+                ciimg = scaleFilter.outputImage ?? ciimg
+            case .bicubic:
+                let scaleFilter = CIFilter.bicubicScaleTransform()
+                scaleFilter.scale = .init(megaPixelScale)
+                scaleFilter.inputImage = ciimg
+                ciimg = scaleFilter.outputImage ?? ciimg
+            }
+        }
+        
         // 输出heif
         let customProperties = custom.customProperties
         let heif = ImageTool.heifData(ciimage: ciimg, quality: customProperties.output.heifLossyCompressionQuality.value)

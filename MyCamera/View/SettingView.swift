@@ -22,6 +22,7 @@ struct SettingView: View {
                 List {
                     Section("Output") {
                         sliderCell(title: "Heif Quality", property: $sharedPropertyies.output.heifLossyCompressionQuality)
+                        megaPixelPickerCell(title: "Max Mega Pixel")
                     }
                     /*
                     Section("Post Progress") {
@@ -79,12 +80,33 @@ struct SettingView: View {
             
             Spacer()
             
-            let bi = Binding<Float> {
-                return property.wrappedValue.value
-            } set: { ne in
-                property.wrappedValue.value = ne
+            BoundSlider(value: property.value, range: old.minValue...old.maxValue, foregroundColor: .yellow, backgroundColor: .gray.opacity(0.2)) { i in
+                
             }
-            SingleSlider(value: bi, range: old.minValue...old.maxValue, foregroundColor: .yellow, backgroundColor: .gray.opacity(0.2)) { i in
+            .frame(width: 200, height: 20)
+            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+        }
+    }
+    
+    @ViewBuilder func megaPixelPickerCell(title: String) -> some View {
+        let bindMega = $sharedPropertyies.output.maxMegaPixel
+        HStack(alignment: .center) {
+            VStack(alignment: .leading) {
+                Text("\(title)")
+                    .font(.system(size: 13))
+                Text(String(format: "%dMP", bindMega.wrappedValue.value.rawValue))
+                    .font(.system(size: 13))
+                    .foregroundColor(.yellow)
+            }
+            .gesture(
+                TapGesture(count: 2).onEnded { t in
+                    bindMega.wrappedValue.value = bindMega.wrappedValue.default
+                }
+            )
+            
+            Spacer()
+            
+            PickerSlider(value: bindMega.value, items: MegaPixel.allCases, foregroundColor: .yellow, backgroundColor: .gray.opacity(0.2)) { i in
                 
             }
             .frame(width: 200, height: 20)
