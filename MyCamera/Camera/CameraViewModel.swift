@@ -28,8 +28,10 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var showPhoto: Bool = false
     @Published var showSetting: Bool = false
     
-    @Published var shutterTimer = ShutterTimer.zero
-    @Published var timerSeconds: TimerObject? = nil
+    @Published private(set) var shutterTimer: Int = 0
+    @Published private(set) var timerSeconds: TimerObject? = nil
+    @Published private(set) var burstCount: Int = 1
+    @Published private(set) var burstObject: BurstObject? = nil
     
     @Published var exposureMode = ExposureMode.auto
     @Published var exposureValue: ExposureValue = .zero
@@ -48,8 +50,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var cropFactor: CustomizeValue<CGFloat> = .init(name: "CustomizeValue_cropFactor", default: 1, minValue: 1, maxValue: 2)
     
     private let feedbackGenerator = UISelectionFeedbackGenerator()
-    
-    private var autoTimer: Timer?
     
     func touchFeedback() {
         feedbackGenerator.prepare()
@@ -174,41 +174,58 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     func capturePhoto() {
+        Task {
+            await capturePhotoAsync()
+        }
+    }
+    
+    @MainActor private func capturePhotoAsync() async {
         @Sendable @MainActor func toggleIsCapturing() async {
             self.isCapturing = true
-            try? await Task.sleep(nanoseconds: 0_100_000_000)
+            try? await Task.sleep(nanoseconds: 0_200_000_000)
             self.isCapturing = false
         }
         Task {
             await toggleIsCapturing()
         }
-        timerSeconds = nil
-        if shutterTimer.rawValue == 0 {
-            reallyCapture()
+        
+        if shutterTimer == 0 {
+            await startCapture()
             return
         }
-        autoTimer?.invalidate()
-        let countingTime = shutterTimer.rawValue
+        
+        let countingTime = TimeInterval(shutterTimer)
         timerSeconds = .init(startTime: Date(), value: countingTime - 0.1)
-        autoTimer = Timer(timeInterval: 0.1, repeats: true) { [weak self] t in
-            guard let timerSeconds = self?.timerSeconds else {
-                t.invalidate()
-                return
+        
+        while timerSeconds != nil {
+            try? await Task.sleep(nanoseconds: 0_100_000_000)
+            guard let startTime = timerSeconds?.startTime else {
+                break
             }
             let now = Date()
-            let leftTime = countingTime - now.timeIntervalSince(timerSeconds.startTime)
-            self?.timerSeconds?.value = leftTime
+            let leftTime = countingTime - now.timeIntervalSince(startTime)
+            timerSeconds?.value = leftTime
             if leftTime < 0 {
-                t.invalidate()
-                self?.timerSeconds = nil
-                self?.reallyCapture()
+                timerSeconds = nil
             }
         }
-        RunLoop.main.add(autoTimer!, forMode: .common)
+        await startCapture()
     }
     
-    private func reallyCapture() {
-        Task {
+    @MainActor private func startCapture() async {
+        let burstTime = max(1, burstCount)
+        if burstTime > 1 {
+            burstObject = .init(total: burstTime, current: 0)
+        }
+        for _ in 0..<burstTime {
+            burstObject?.current += 1
+            await captureOneAsync()
+        }
+        burstObject = nil
+    }
+    
+    @MainActor private func captureOneAsync() async {
+        do {
             await MainActor.run {
                 isProcessing = true
             }
@@ -237,7 +254,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                     }
                 }
             }
-            
         }
     }
     
@@ -265,6 +281,27 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         case .manual:
             await service.setCustomExposure(shutterSpeed: shutterSpeed.cmTime, iso: ISO.floatValue)
         }
+    }
+    
+    func toggleTimer() {
+        let d = [
+            0: 2,
+            2: 5,
+            5: 10,
+        ]
+        shutterTimer = d[shutterTimer] ?? 0
+    }
+    
+    func toggleBurst() {
+        let d = [
+            1: 5,
+            5: 10,
+            10: 20,
+            20: 40,
+            40: 60,
+            60: 100,
+        ]
+        burstCount = d[burstCount] ?? 1
     }
     
     // MARK: Device Orientation

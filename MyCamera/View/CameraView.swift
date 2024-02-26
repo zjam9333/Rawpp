@@ -98,19 +98,44 @@ struct CameraView: View {
             
             Button {
                 viewModel.touchFeedback()
-                viewModel.shutterTimer.toggleNext()
+                viewModel.toggleTimer()
             } label: {
-                let t = Int(viewModel.shutterTimer.rawValue)
-                HStack(spacing: 2) {
-                    Image(systemName: "timer")
-                        .font(.system(size: 20))
-                        .accentColor(t > 0 ? .yellow : .white)
-                    if t > 0 {
-                        Text("\(t)")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.yellow)
+                let t = Int(viewModel.shutterTimer)
+                let hi = t > 1
+                Image(systemName: "timer")
+                    .font(.system(size: 20))
+                    .accentColor(hi ? .yellow : .white)
+                    .overlay {
+                        if hi {
+                            Text("\(t)")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.yellow)
+                                .padding(.horizontal, 2)
+                                .background(.black)
+                                .offset(x: 10, y: -10)
+                        }
                     }
-                }
+            }
+            
+            Button {
+                viewModel.touchFeedback()
+                viewModel.toggleBurst()
+            } label: {
+                let t = Int(viewModel.burstCount)
+                let hi = t > 1
+                Image(systemName: "repeat")
+                    .font(.system(size: 20))
+                    .accentColor(hi ? .yellow : .white)
+                    .overlay {
+                        if hi {
+                            Text("\(t)")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.yellow)
+                                .padding(.horizontal, 2)
+                                .background(.black)
+                                .offset(x: 10, y: -10)
+                        }
+                    }
             }
             
             Spacer()
@@ -267,17 +292,6 @@ struct CameraView: View {
                 
                 gestureContainer(size: size)
                 
-                if let timer = viewModel.timerSeconds {
-                    let seconds = Int(timer.value) + 1
-                    Circle()
-                        .foregroundStyle(.black.opacity(0.5))
-                        .frame(width: 100, height: 100, alignment: .center)
-                        .overlay(alignment: .center) {
-                            Text("\(seconds)")
-                                .foregroundStyle(.white)
-                                .font(.system(size: 72))
-                        }
-                } 
                 if viewModel.allLenses.count > 0 {
                     Color.clear.overlay(alignment: .bottom) {
                         lensesSelection
@@ -350,20 +364,32 @@ struct CameraView: View {
         .frame(height: 100)
         .padding(.horizontal, 20)
         .overlay(alignment: .center) {
-            Button {
-                viewModel.touchFeedback()
-                viewModel.capturePhoto()
-            } label: {
-                let buttonSiz: CGFloat = 74
-                let circleSiz = buttonSiz - 36
-                Circle()
-                    .stroke(viewModel.isCapturing ? .gray : .white, lineWidth: 1)
-                    .frame(width: buttonSiz, height: buttonSiz, alignment: .center)
-                    .overlay(alignment: .center) {
-                        Circle()
-                            .stroke(Color.gray, lineWidth: 1)
-                            .frame(width: circleSiz, height: circleSiz, alignment: .center)
-                    }
+            
+            if let timer = viewModel.timerSeconds {
+                let seconds = Int(timer.value) + 1
+                Text("\(seconds)")
+                    .foregroundStyle(.white)
+                    .font(.system(size: 72))
+            } else if let burst = viewModel.burstObject {
+                Text("\(burst.current)/\(burst.total)")
+                    .foregroundStyle(.white)
+                    .font(.system(size: 72))
+            } else {
+                Button {
+                    viewModel.touchFeedback()
+                    viewModel.capturePhoto()
+                } label: {
+                    let buttonSiz: CGFloat = 74
+                    let circleSiz = buttonSiz - 36
+                    Circle()
+                        .stroke(viewModel.isCapturing ? .gray : .white, lineWidth: 1)
+                        .frame(width: buttonSiz, height: buttonSiz, alignment: .center)
+                        .overlay(alignment: .center) {
+                            Circle()
+                                .stroke(Color.gray, lineWidth: 1)
+                                .frame(width: circleSiz, height: circleSiz, alignment: .center)
+                        }
+                }
             }
         }
         .overlay(alignment: .trailing) {
