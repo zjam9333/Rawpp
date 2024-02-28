@@ -18,8 +18,8 @@ struct CameraView: View {
     var body: some View {
         
         VStack {
-            topActions.zIndex(10)
             centerPreview.zIndex(1)
+            topActions.zIndex(10)
             bottomActions.zIndex(10)
         }
         .preferredColorScheme(.dark)
@@ -75,7 +75,7 @@ struct CameraView: View {
     }
     
     @ViewBuilder private var topActions: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 10) {
             Button {
                 viewModel.touchFeedback()
                 viewModel.switchFlash()
@@ -90,7 +90,7 @@ struct CameraView: View {
                 viewModel.touchFeedback()
                 viewModel.toggleFrontCamera()
             } label: {
-                Image(systemName: "arrow.triangle.2.circlepath")
+                Image(systemName: "arrow.triangle.2.circlepath.camera")
                     .font(.system(size: 20))
                     .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             }
@@ -168,7 +168,7 @@ struct CameraView: View {
                 .border(.white, width: 1)
             }
         }
-        .frame(height: 64)
+        .frame(height: 44)
         .padding(.horizontal, 20)
     }
     
@@ -308,7 +308,7 @@ struct CameraView: View {
                     i.selectionHandler()
                 } label: {
                     RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(.gray.opacity(i.isSelected ? 1 : 0))
+                        .fill(.black.opacity(i.isSelected ? 0.5 : 0))
                         .frame(width: i.isSelected ? 40 : 36, height: 30, alignment: .center)
                         .overlay {
                             Text(i.title)
@@ -331,38 +331,56 @@ struct CameraView: View {
     
     @ViewBuilder private var bottomActions: some View {
         HStack {
-            if let data = viewModel.photos.first?.data, let img = UIImage(data: data) {
-                Button {
-                    viewModel.touchFeedback()
-                    viewModel.showPhoto = true
-                } label: {
-                    Image(uiImage: img)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 74, height: 74)
-                        .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
-                }
-                .opacity(viewModel.isAppInBackground ? 0 : 1)
-                .animation(.default, value: viewModel.isAppInBackground)
+            Spacer()
+        }
+        .frame(height: 100)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(.black)
+                .frame(width: 74, height: 74)
                 .overlay(alignment: .center) {
+                    let firstPhoto = viewModel.photos.first { p in
+                        return p.data != nil
+                    }
+                    if let photo = firstPhoto, let data = photo.data, let img = UIImage(data: data) {
+                        let isGroup = photo.count > 1
+                        Button {
+                            viewModel.touchFeedback()
+                            viewModel.showPhoto = true
+                        } label: {
+                            ZStack {
+                                let range = 0..<max(1, min(3, photo.count))
+                                ForEach(range, id: \.self) { i in
+                                    Image(uiImage: img)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .border(.white, width: 1)
+                                        .offset(x: CGFloat(i) * (-3), y: CGFloat(i) * (3))
+                                }
+                            }
+                            .frame(width: 74, height: 74)
+                        }.overlay(alignment: .bottomLeading) {
+                            if isGroup {
+                                Text("\(photo.count)")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 6)
+                                    .background {
+                                        Rectangle()
+                                            .fill(.black)
+                                            .border(.white, width: 1)
+                                    }
+                            }
+                        }
+                    }
                     if viewModel.isProcessing {
                         LoadingView()
                     }
                 }
-            } else {
-                Rectangle().fill(.clear)
-                    .frame(width: 74, height: 74)
-                    .overlay(alignment: .center) {
-                        if viewModel.isProcessing {
-                            LoadingView()
-                        }
-                    }
-            }
-            
-            Spacer()
+                
+                .opacity(viewModel.isAppInBackground ? 0 : 1)
+                .animation(.default, value: viewModel.isAppInBackground)
         }
-        .frame(height: 100)
-        .padding(.horizontal, 20)
         .overlay(alignment: .center) {
             
             if let timer = viewModel.timerSeconds {
@@ -399,18 +417,18 @@ struct CameraView: View {
                 case .auto:
                     Text(String(format: "EV %.1f", viewModel.exposureValue.floatValue))
                         .font(.system(size: 12))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.green)
                 case .manual:
                     Text(String(format: "ISO %.0f", viewModel.ISO.floatValue))
                         .font(.system(size: 12))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.red)
                     Text("SS \(viewModel.shutterSpeed.description)")
                         .font(.system(size: 12))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.red)
                 }
                 Text("\(sharedPropertyies.output.maxMegaPixel.value.rawValue)MP")
                     .font(.system(size: 12))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.yellow)
             }
             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             .padding(10)
@@ -420,6 +438,7 @@ struct CameraView: View {
                 viewModel.showSetting = true
             }
         }
+        .padding(.horizontal, 20)
     }
     
     @ViewBuilder func valuesIndicator<Element>(currentValue: Element, values: [Element], isInteger: @escaping (Element) -> Bool) -> some View where Element: Hashable {

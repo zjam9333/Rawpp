@@ -44,9 +44,10 @@ struct Photo: Identifiable, Equatable {
     let id: String
     //    Data representation of the captured photo
     
-    let data: Data
+    var data: Data?
+    var count: Int = 0
     
-    init(id: String = UUID().uuidString, data: Data) {
+    init(id: String = UUID().uuidString, data: Data?) {
         self.id = id
         self.data = data
     }

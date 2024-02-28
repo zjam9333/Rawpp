@@ -18,7 +18,7 @@ struct PhotoReview: View {
             if photos.isEmpty == false {
                 TabView(selection: $currentTag) {
                     ForEach(Array(photos.enumerated()), id: \.offset) { index, p in
-                        if let img = UIImage(data: p.data) {
+                        if let data = p.data, let img = UIImage(data: data) {
                             let rate = img.size.width / img.size.height
                             ZoomView(presenting: index == currentTag, contentAspectRatio: rate) {
                                 Image(uiImage: img)

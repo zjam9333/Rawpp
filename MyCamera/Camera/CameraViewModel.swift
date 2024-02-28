@@ -209,51 +209,46 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 timerSeconds = nil
             }
         }
+        shutterTimer = 0 // 定时重置
         await startCapture()
     }
     
     @MainActor private func startCapture() async {
+        isProcessing = true
         let burstTime = max(1, burstCount)
         if burstTime > 1 {
             burstObject = .init(total: burstTime, current: 0)
         }
+        photos.insert(.init(data: nil), at: 0)
         for _ in 0..<burstTime {
             burstObject?.current += 1
-            await captureOneAsync()
-        }
-        burstObject = nil
-    }
-    
-    @MainActor private func captureOneAsync() async {
-        do {
-            await MainActor.run {
-                isProcessing = true
-            }
+            
             let result = await service.capturePhoto(rawOption: rawOption, location: lastLocation, flashMode: isFlashOn ? .on : .off, cropFactor: max(cropFactor.value, 1))
-            await MainActor.run {
-                isProcessing = false
-            }
             switch result {
             case .failure(let alert):
-                await MainActor.run {
-                    var alert = alert
-                    alert.primaryAction = { [weak self] in
-                        self?.alertError = nil
-                    }
-                    self.alertError = alert
+                var alert = alert
+                alert.primaryAction = { [weak self] in
+                    self?.alertError = nil
                 }
+                alertError = alert
             case .success(let pic):
-                if let pic = pic {
-                    await MainActor.run {
-                        self.photos.insert(pic, at: 0)
-                        let maxCnt = 5
-                        // 节省空间
-                        if self.photos.count > maxCnt {
-                            self.photos = Array(self.photos.prefix(maxCnt))
-                        }
-                    }
+                if let data = pic {
+                    var p0 = photos[0]
+                    p0.data = data
+                    p0.count += 1
+                    photos[0] = p0
                 }
             }
+            
+        }
+        burstObject = nil
+        burstCount = 1 // 连拍重置
+        isProcessing = false
+        
+        let maxCnt = 5
+        // 节省空间
+        if photos.count > maxCnt {
+            photos = Array(photos.prefix(maxCnt))
         }
     }
     

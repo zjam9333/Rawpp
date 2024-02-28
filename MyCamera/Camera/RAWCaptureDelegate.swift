@@ -11,7 +11,7 @@ import CoreImage.CIFilterBuiltins
 
 class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     
-    init(custom: Custom, didFinish: @escaping (Photo?) -> Void) {
+    init(custom: Custom, didFinish: @escaping (Data?) -> Void) {
         self.custom = custom
         self.didFinish = didFinish
         super.init()
@@ -26,31 +26,31 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         fileprivate let customProperties = RawFilterProperties.shared
     }
     
-    private let didFinish: (Photo?) -> Void
+    private let didFinish: (Data?) -> Void
+    
+    var photo: (AVCapturePhoto, Error?)?
     
     func photoOutput(_ output: AVCapturePhotoOutput, willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings) {
         // dispose system shutter sound
         AudioServicesDisposeSystemSoundID(1108)
     }
     
-    // Store the RAW file and compressed photo data until the capture finishes.
-    func photoOutput(_ output: AVCapturePhotoOutput,
-                     didFinishProcessingPhoto photo: AVCapturePhoto,
-                     error: Error?) {
-        Task(priority: .high) {
-            let output = await processPhoto(photo, error: error)
-            let photo = output.map { o in
-                return Photo(data: o)
-            }
-            didFinish(photo)
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        self.photo = (photo, error)
+    }
+    
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishCaptureFor resolvedSettings: AVCaptureResolvedPhotoSettings, error: Error?) {
+        Task {
+            let output = await processPhoto(photo?.0, error: error)
+            didFinish(output)
         }
     }
     
-    private func processPhoto(_ photo: AVCapturePhoto, error: Error?) async -> Data? {
-        guard let rawData = photo.fileDataRepresentation(), error == nil else {
+    private func processPhoto(_ photo: AVCapturePhoto?, error: Error?) async -> Data? {
+        guard let rawData = photo?.fileDataRepresentation(), error == nil else {
             return nil
         }
-        guard photo.isRawPhoto else {
+        guard photo?.isRawPhoto == true else {
             // apple处理的heic版本
             let notRawData = await handleNotRawOutput(photoData: rawData) ?? rawData
             savePhotoData(notRawData)
@@ -97,25 +97,10 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             return nil
         }
         print("RAW", "filter created")
-        guard let ciimg = rawFilter.outputImage else {
+        guard var ciimg = rawFilter.outputImage else {
             return nil
         }
         print("RAW", "outputed Image")
-        return await basicCIImageAdjustmentOutput(ciimg: ciimg)
-    }
-    
-    private func basicCIImageAdjustmentOutput(ciimg: CIImage) async -> Data? {
-        var ciimg = ciimg
-        
-        // 裁切
-        let cropFactor = custom.cropFactor
-        if cropFactor > 1 {
-            print("CIImage", "cropFactor", cropFactor)
-            let insetFac = (1 - 1 / cropFactor) / 2
-            let extent = ciimg.extent
-            let croppedRect = extent.insetBy(dx: extent.width * insetFac, dy: extent.height * insetFac)
-            ciimg = ciimg.cropped(to: croppedRect) // 直接裁了会损失原始数据，有其他办法？
-        }
         
         // 自动调整
         let autoOptions: [CIImageAutoAdjustmentOption: Any] = [
@@ -133,6 +118,22 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             ciimg = fil.outputImage ?? ciimg
         }
         print("CIImage", "autoAdjustmentFilters used")
+        
+        return await basicCIImageAdjustmentOutput(ciimg: ciimg)
+    }
+    
+    private func basicCIImageAdjustmentOutput(ciimg: CIImage) async -> Data? {
+        var ciimg = ciimg
+        
+        // 裁切
+        let cropFactor = custom.cropFactor
+        if cropFactor > 1 {
+            print("CIImage", "cropFactor", cropFactor)
+            let insetFac = (1 - 1 / cropFactor) / 2
+            let extent = ciimg.extent
+            let croppedRect = extent.insetBy(dx: extent.width * insetFac, dy: extent.height * insetFac)
+            ciimg = ciimg.cropped(to: croppedRect) // 直接裁了会损失原始数据，有其他办法？
+        }
         
         let megaPixelScale = custom.customProperties.output.maxMegaPixel.value.scaleFrom(originalSize: ciimg.extent.size)
         if megaPixelScale < 0.90 && megaPixelScale > 0 {
