@@ -23,7 +23,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         var saveOption: RAWSaveOption
         var cropFactor: CGFloat
         var location: CLLocation?
-        fileprivate let customProperties = RawFilterProperties.shared
+        fileprivate let customProperties = CustomSettingProperties.shared
     }
     
     private let didFinish: (Data?) -> Void

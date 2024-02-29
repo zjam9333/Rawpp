@@ -20,10 +20,13 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var isFlashOn = false
     @Published var isCapturing = false
     @Published var isProcessing = false
-    @Published var rawOption: RAWSaveOption = .cachedRawOption {
-        didSet {
-            RAWSaveOption.cachedRawOption = rawOption
+    @Published var rawOption = MappedCustomizeValue<RAWSaveOption, RAWSaveOption.RawValue>(name: "CameraViewModelCachedRawOption", default: .heif) { op in
+        return op.rawValue
+    } get: { va in
+        guard va > 0 else {
+            return .heif
         }
+        return .init(rawValue: va)
     }
     @Published var showPhoto: Bool = false
     @Published var showSetting: Bool = false
@@ -47,7 +50,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var showingEVIndicators = false
     @Published var isAppInBackground = false
     
-    @Published var cropFactor: CustomizeValue<CGFloat> = .init(name: "CustomizeValue_cropFactor", default: 1, minValue: 1, maxValue: 2)
+    @Published var cropFactor: RangeCustomizeValue<CGFloat> = .init(name: "CustomizeValue_cropFactor", default: 1, minValue: 1, maxValue: 2)
     
     private let feedbackGenerator = UISelectionFeedbackGenerator()
     
@@ -166,7 +169,9 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             } else {
                 await MainActor.run {
                     self.alertError = AlertError(title: "Camera Error", message: "App doesn't have access to use your camera, please update your privacy settings.", primaryButtonTitle: "Go Settings", secondaryButtonTitle: "Cancel", primaryAction: {
+                        [weak self] in
                         UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!, options: [:], completionHandler: nil)
+                        self?.alertError = nil
                     }, secondaryAction: nil)
                 }
             }
@@ -223,7 +228,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         for _ in 0..<burstTime {
             burstObject?.current += 1
             
-            let result = await service.capturePhoto(rawOption: rawOption, location: lastLocation, flashMode: isFlashOn ? .on : .off, cropFactor: max(cropFactor.value, 1))
+            let result = await service.capturePhoto(rawOption: rawOption.value, location: lastLocation, flashMode: isFlashOn ? .on : .off, cropFactor: max(cropFactor.value, 1))
             switch result {
             case .failure(let alert):
                 var alert = alert

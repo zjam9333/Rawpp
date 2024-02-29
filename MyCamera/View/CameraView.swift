@@ -13,16 +13,17 @@ import SwiftUI
 struct CameraView: View {
     @StateObject var viewModel = CameraViewModel()
     
-    @StateObject private var sharedPropertyies = RawFilterProperties.shared
+    @StateObject private var sharedPropertyies = CustomSettingProperties.shared
     
     var body: some View {
         
-        VStack {
+        VStack(spacing: 0) {
             centerPreview.zIndex(1)
             topActions.zIndex(10)
             bottomActions.zIndex(10)
         }
-        .preferredColorScheme(.dark)
+        .background(ThemeColor.background)
+        .preferredColorScheme(sharedPropertyies.color.themeColor.value.colorScheme)
         .fullScreenCover(isPresented: $viewModel.showPhoto) {
             PhotoReview(photos: viewModel.photos, presenting: $viewModel.showPhoto)
         }
@@ -34,7 +35,8 @@ struct CameraView: View {
         }
         .overlay {
             if let err = viewModel.alertError {
-                Color.black.opacity(0.3)
+                ThemeColor.foreground.opacity(0.2)
+                    .scaleEffect(y: 2)
                 VStack(alignment: .center) {
                     Text(err.title)
                         .font(.title3)
@@ -65,10 +67,12 @@ struct CameraView: View {
                     }
                     .frame(height: 44)
                 }
-                .foregroundStyle(.black)
+                .foregroundStyle(ThemeColor.foreground)
                 .padding(10)
-                .background(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(ThemeColor.background)
+                )
                 .frame(width: 280)
             }
         }
@@ -83,7 +87,7 @@ struct CameraView: View {
                 Image(systemName: viewModel.isFlashOn ? "bolt.fill" : "bolt.slash.fill")
                     .font(.system(size: 20))
             }
-            .accentColor(viewModel.isFlashOn ? .yellow : .white)
+            .accentColor(viewModel.isFlashOn ? ThemeColor.highlightedYellow : ThemeColor.foreground)
             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             
             Button {
@@ -94,7 +98,7 @@ struct CameraView: View {
                     .font(.system(size: 20))
                     .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             }
-            .accentColor(.white)
+            .accentColor(ThemeColor.foreground)
             
             Button {
                 viewModel.touchFeedback()
@@ -104,14 +108,14 @@ struct CameraView: View {
                 let hi = t > 1
                 Image(systemName: "timer")
                     .font(.system(size: 20))
-                    .accentColor(hi ? .yellow : .white)
+                    .accentColor(hi ? ThemeColor.highlightedYellow : ThemeColor.foreground)
                     .overlay {
                         if hi {
                             Text("\(t)")
                                 .font(.system(size: 12))
-                                .foregroundStyle(.yellow)
+                                .foregroundStyle(ThemeColor.highlightedYellow)
                                 .padding(.horizontal, 2)
-                                .background(.black)
+                                .background(ThemeColor.background)
                                 .offset(x: 10, y: -10)
                         }
                     }
@@ -125,14 +129,14 @@ struct CameraView: View {
                 let hi = t > 1
                 Image(systemName: "repeat")
                     .font(.system(size: 20))
-                    .accentColor(hi ? .yellow : .white)
+                    .accentColor(hi ? ThemeColor.highlightedYellow : ThemeColor.foreground)
                     .overlay {
                         if hi {
                             Text("\(t)")
                                 .font(.system(size: 12))
-                                .foregroundStyle(.yellow)
+                                .foregroundStyle(ThemeColor.highlightedYellow)
                                 .padding(.horizontal, 2)
-                                .background(.black)
+                                .background(ThemeColor.background)
                                 .offset(x: 10, y: -10)
                         }
                     }
@@ -155,72 +159,72 @@ struct CameraView: View {
                     switch viewModel.exposureMode {
                     case .auto:
                         Text("AUTO")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(ThemeColor.highlightedGreen)
                     case .manual:
                         Text("MAN")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(ThemeColor.highlightedRed)
                     }
                 }
                 .font(.system(size: 12))
-                .foregroundStyle(.white)
                 .padding(5)
                 .frame(height: 24)
-                .border(.white, width: 1)
+                .border(ThemeColor.foreground, width: 1)
             }
         }
         .frame(height: 44)
         .padding(.horizontal, 20)
+        .background()
     }
     
     @ViewBuilder private var rawOptionView: some View {
         HStack(spacing: 10) {
             Button {
                 viewModel.touchFeedback()
-                if viewModel.rawOption.contains(.apple) {
-                    viewModel.rawOption.remove(.apple)
+                if viewModel.rawOption.value.contains(.apple) {
+                    viewModel.rawOption.value.remove(.apple)
                 } else {
-                    viewModel.rawOption.insert(.apple)
+                    viewModel.rawOption.value.insert(.apple)
                 }
             } label: {
                 Text("APPLE")
                     .font(.system(size: 12))
-                    .foregroundStyle(.white)
-                    .strikethrough(viewModel.rawOption.contains(.apple) == false, color: .yellow)
+                    .foregroundStyle(ThemeColor.foreground)
+                    .strikethrough(viewModel.rawOption.value.contains(.apple) == false, color: ThemeColor.highlightedYellow)
                     .padding(.vertical, 5)
                     .frame(height: 24)
             }
             
             Button {
                 viewModel.touchFeedback()
-                switch viewModel.rawOption {
+                switch viewModel.rawOption.value {
                 case .heif:
-                    viewModel.rawOption = .raw
+                    viewModel.rawOption.value = .raw
                 case .raw:
-                    viewModel.rawOption = [.raw, .heif]
+                    viewModel.rawOption.value = [.raw, .heif]
                 default:
-                    viewModel.rawOption = .heif
+                    viewModel.rawOption.value = .heif
                 }
             } label: {
                 var title: String {
-                    if viewModel.rawOption.contains([.heif, .raw]) {
+                    if viewModel.rawOption.value.contains([.heif, .raw]) {
                         return "R+H"
-                    } else if viewModel.rawOption.contains(.raw) {
+                    } else if viewModel.rawOption.value.contains(.raw) {
                         return "RAW"
-                    } else if viewModel.rawOption.contains(.heif) {
+                    } else if viewModel.rawOption.value.contains(.heif) {
                         return "HEIF"
                     }
                     return ""
                 }
                 Text(title)
                     .font(.system(size: 12))
-                    .foregroundStyle(.white)
-                    .strikethrough(viewModel.rawOption.contains(.apple), color: .yellow)
+                    .foregroundStyle(ThemeColor.foreground)
+                    .strikethrough(viewModel.rawOption.value.contains(.apple), color: ThemeColor.highlightedYellow)
                     .padding(.vertical, 5)
                     .frame(height: 24)
             }
         }
         .padding(.horizontal, 5)
-        .border(.white, width: 1)
+        .border(ThemeColor.foreground, width: 1)
     }
     
     @ViewBuilder private var centerPreview: some View {
@@ -315,7 +319,7 @@ struct CameraView: View {
                                 .font(.system(size: 12))
                                 .foregroundStyle(.white)
                             if i.isMain {
-                                Color.yellow.frame(width: 10, height: 1).offset(y: 8)
+                                ThemeColor.highlightedYellow.frame(width: 10, height: 1).offset(y: 8)
                             }
                         }
                 }
@@ -336,7 +340,7 @@ struct CameraView: View {
         .frame(height: 100)
         .overlay(alignment: .leading) {
             Rectangle()
-                .fill(.black)
+                .fill(ThemeColor.background)
                 .frame(width: 74, height: 74)
                 .overlay(alignment: .center) {
                     let firstPhoto = viewModel.photos.first { p in
@@ -386,11 +390,11 @@ struct CameraView: View {
             if let timer = viewModel.timerSeconds {
                 let seconds = Int(timer.value) + 1
                 Text("\(seconds)")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.foreground)
                     .font(.system(size: 72))
             } else if let burst = viewModel.burstObject {
                 Text("\(burst.current)/\(burst.total)")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.foreground)
                     .font(.system(size: 72))
             } else {
                 Button {
@@ -400,11 +404,11 @@ struct CameraView: View {
                     let buttonSiz: CGFloat = 74
                     let circleSiz = buttonSiz - 36
                     Circle()
-                        .stroke(viewModel.isCapturing ? .gray : .white, lineWidth: 1)
+                        .stroke(viewModel.isCapturing ? .gray : ThemeColor.foreground, lineWidth: 1)
                         .frame(width: buttonSiz, height: buttonSiz, alignment: .center)
                         .overlay(alignment: .center) {
                             Circle()
-                                .stroke(Color.gray, lineWidth: 1)
+                                .stroke(ThemeColor.foreground, lineWidth: 1)
                                 .frame(width: circleSiz, height: circleSiz, alignment: .center)
                         }
                 }
@@ -417,18 +421,18 @@ struct CameraView: View {
                 case .auto:
                     Text(String(format: "EV %.1f", viewModel.exposureValue.floatValue))
                         .font(.system(size: 12))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(ThemeColor.highlightedGreen)
                 case .manual:
                     Text(String(format: "ISO %.0f", viewModel.ISO.floatValue))
                         .font(.system(size: 12))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(ThemeColor.highlightedRed)
                     Text("SS \(viewModel.shutterSpeed.description)")
                         .font(.system(size: 12))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(ThemeColor.highlightedRed)
                 }
                 Text("\(sharedPropertyies.output.maxMegaPixel.value.rawValue)MP")
                     .font(.system(size: 12))
-                    .foregroundStyle(.yellow)
+                    .foregroundStyle(ThemeColor.highlightedYellow)
             }
             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             .padding(10)
@@ -439,6 +443,7 @@ struct CameraView: View {
             }
         }
         .padding(.horizontal, 20)
+        .background()
     }
     
     @ViewBuilder func valuesIndicator<Element>(currentValue: Element, values: [Element], isInteger: @escaping (Element) -> Bool) -> some View where Element: Hashable {
@@ -449,7 +454,7 @@ struct CameraView: View {
                     .frame(width: isSelected ? 2 : 1, height: 12)
                     .overlay(alignment: .bottom) {
                         Rectangle()
-                            .fill(isSelected ? Color.red : Color.white)
+                            .fill(isSelected ? ThemeColor.highlightedRed : Color.white)
                             .frame(height: isInteger(ev) ? 12 : 8)
                     }
                     .overlay(alignment: .top) {
@@ -457,7 +462,7 @@ struct CameraView: View {
                             Image(systemName: "triangle.fill")
                                 .resizable()
                                 .rotationEffect(.degrees(180))
-                                .accentColor(Color.red)
+                                .accentColor(ThemeColor.highlightedRed)
                                 .frame(width: 4, height: 4)
                                 .offset(y: -8)
                         }
@@ -554,7 +559,7 @@ struct CameraViewPreview: PreviewProvider {
     static var previews: some View {
         return CameraView()
             .ignoresSafeArea()
-            .border(.white, width: 1)
+            .border(ThemeColor.highlightedRed, width: 1)
             .background(.black)
     }
 }

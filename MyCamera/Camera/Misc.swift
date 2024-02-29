@@ -7,6 +7,7 @@
 
 import AVFoundation
 import CoreImage
+import SwiftUI
 
 var isXcodeDebugging: Bool {
     return CommandLine.arguments.contains("IS_XCODE_DEBUGGING")
@@ -126,19 +127,6 @@ struct RAWSaveOption: OptionSet {
     var saveJpeg: Bool {
         return contains(.apple) || contains(.heif)
     }
-    
-    static var cachedRawOption: RAWSaveOption {
-        get {
-            guard let value = UserDefaults.standard.value(forKey: "CameraViewModelCachedRawOption") as? UInt8, value > 0 else {
-                return .heif
-            }
-            return RAWSaveOption(rawValue: value)
-        }
-        set {
-            let value = newValue.rawValue
-            UserDefaults.standard.setValue(value, forKey: "CameraViewModelCachedRawOption")
-        }
-    }
 }
 
 struct ISOValue: Equatable, Hashable {
@@ -254,8 +242,73 @@ extension AVCaptureVideoOrientation {
     }
 }
 
-struct CustomizeMapValue<Value, MappedValue>: Equatable where Value: Comparable, MappedValue: Comparable {
-    static func == (lhs: CustomizeMapValue<Value, MappedValue>, rhs: CustomizeMapValue<Value, MappedValue>) -> Bool {
+protocol CustomCacheProtocol {
+    associatedtype CustomCacheElement
+    
+    var customCacheKey: String {
+        get
+    }
+    
+    var customCacheValue: CustomCacheElement? {
+        set get
+    }
+}
+
+extension CustomCacheProtocol {
+    var customCacheValue: CustomCacheElement? {
+        set {
+            UserDefaults.standard.setValue(newValue, forKey: customCacheKey)
+        }
+        get {
+            return UserDefaults.standard.value(forKey: customCacheKey) as? CustomCacheElement
+        }
+    }
+}
+
+struct RangeCustomizeValue<Value>: Equatable, CustomCacheProtocol where Value: Comparable {
+    typealias CustomCacheElement = Value
+    
+    let name: String
+    let `default`: Value
+    let minValue: Value
+    let maxValue: Value
+    var value: Value {
+        didSet {
+            cachedValue = value
+        }
+    }
+    
+    init(name: String, default: Value, minValue: Value, maxValue: Value) {
+        self.name = name
+        self.default = `default`
+        self.minValue = minValue
+        self.maxValue = maxValue
+        self.value = UserDefaults.standard.value(forKey: "CustomizeValue_\(name)") as? Value ?? `default`
+    }
+    
+    var customCacheKey: String {
+        return "CustomizeValue_\(name)"
+    }
+    
+    private var cachedValue: Value {
+        set {
+            if newValue >= minValue && newValue <= maxValue {
+                customCacheValue = newValue
+            }
+        }
+        get {
+            let g = customCacheValue
+            return g ?? `default`
+        }
+    }
+    
+    mutating func reset() {
+        value = `default`
+    }
+}
+
+struct MappedRangeCustomizeValue<Value, MappedValue>: Equatable where Value: Comparable, MappedValue: Comparable {
+    static func == (lhs: MappedRangeCustomizeValue<Value, MappedValue>, rhs: MappedRangeCustomizeValue<Value, MappedValue>) -> Bool {
         return lhs.wrapObject == rhs.wrapObject
     }
     
@@ -281,41 +334,37 @@ struct CustomizeMapValue<Value, MappedValue>: Equatable where Value: Comparable,
         return mapGetter(wrapObject.default)
     }
     
-    private var wrapObject: CustomizeValue<MappedValue>
+    private var wrapObject: RangeCustomizeValue<MappedValue>
 }
 
-struct CustomizeValue<Value>: Equatable where Value: Comparable {
+struct CustomizeValue<Value>: Equatable, CustomCacheProtocol where Value: Equatable {
+    
+    typealias CustomCacheElement = Value
     
     let name: String
     let `default`: Value
-    let minValue: Value
-    let maxValue: Value
     var value: Value {
         didSet {
             cachedValue = value
         }
     }
     
-    init(name: String, default: Value, minValue: Value, maxValue: Value) {
+    init(name: String, default: Value) {
         self.name = name
         self.default = `default`
-        self.minValue = minValue
-        self.maxValue = maxValue
         self.value = UserDefaults.standard.value(forKey: "CustomizeValue_\(name)") as? Value ?? `default`
     }
     
-    private var getCacheKey: String {
+    var customCacheKey: String {
         return "CustomizeValue_\(name)"
     }
     
     private var cachedValue: Value {
         set {
-            if newValue >= minValue && newValue <= maxValue {
-                UserDefaults.standard.setValue(newValue, forKey: getCacheKey)
-            }
+            customCacheValue = newValue
         }
         get {
-            let g = UserDefaults.standard.value(forKey: getCacheKey) as? Value
+            let g = customCacheValue
             return g ?? `default`
         }
     }
@@ -325,32 +374,69 @@ struct CustomizeValue<Value>: Equatable where Value: Comparable {
     }
 }
 
-class RawFilterProperties: ObservableObject {
+
+struct MappedCustomizeValue<Value, MappedValue>: Equatable where Value: Equatable, MappedValue: Equatable {
+    static func == (lhs: MappedCustomizeValue<Value, MappedValue>, rhs: MappedCustomizeValue<Value, MappedValue>) -> Bool {
+        return lhs.wrapObject == rhs.wrapObject
+    }
+    
+    private let mapSetter: (Value) -> MappedValue
+    private let mapGetter: (MappedValue) -> Value
+    
+    init(name: String, default: Value, set: @escaping (Value) -> MappedValue, get: @escaping (MappedValue) -> Value) {
+        self.mapSetter = set
+        self.mapGetter = get
+        self.wrapObject = .init(name: name, default: set(`default`))
+    }
+    
+    var value: Value {
+        set {
+            wrapObject.value = mapSetter(newValue)
+        }
+        get {
+            return mapGetter(wrapObject.value)
+        }
+    }
+    
+    var `default`: Value {
+        return mapGetter(wrapObject.default)
+    }
+    
+    private var wrapObject: CustomizeValue<MappedValue>
+}
+
+class CustomSettingProperties: ObservableObject {
     typealias Value = Float
     
     @Published var raw = Raw()
     @Published var output = Output()
+    @Published var color = Color()
     
     struct Raw {
-        var boostAmount = CustomizeValue<Value>(name: "RawFilterProperties_boostAmount", default: 1, minValue: 0, maxValue: 1)
+        var boostAmount = RangeCustomizeValue<Value>(name: "RawFilterProperties_boostAmount", default: 1, minValue: 0, maxValue: 1)
     }
     
     struct Output {
-        var heifLossyCompressionQuality = CustomizeValue<Value>(name: "RawFilterProperties_heifLossyCompressionQuality", default: 0.7, minValue: 0.1, maxValue: 1)
+        var heifLossyCompressionQuality = RangeCustomizeValue<Value>(name: "RawFilterProperties_heifLossyCompressionQuality", default: 0.7, minValue: 0.1, maxValue: 1)
         
-        var maxMegaPixel = CustomizeMapValue<MegaPixel, Int64>(name: "RawFilterProperties_maxMegaPixel", default: .m12, minValue: .lowest, maxValue: .highest) { p in
+        var maxMegaPixel = MappedRangeCustomizeValue<MegaPixel, Int64>(name: "RawFilterProperties_maxMegaPixel", default: .m12, minValue: .lowest, maxValue: .highest) { p in
             return p.rawValue
         } get: { v in
             return .init(rawValue: v) ?? .m12
         }
     }
     
-    private init(raw: Raw = Raw(), output: Output = Output()) {
-        self.raw = raw
-        self.output = output
+    struct Color {
+        var themeColor = MappedCustomizeValue<ThemeColor, ThemeColor.RawValue>(name: "RawFilterProperties_themeColor", default: .system) { se in
+            return se.rawValue
+        } get: { ge in
+            return .init(rawValue: ge) ?? .system
+        }
     }
     
-    static let shared = RawFilterProperties()
+    private init() { }
+    
+    static let shared = CustomSettingProperties()
 }
 
 enum ImageTool {
@@ -441,4 +527,38 @@ enum ScaleInterpolation {
     case nearest
     case lanczos
     case bicubic
+}
+
+enum ThemeColor: Int {
+    case system = 0
+    case light = 1
+    case dark = 2
+    
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system:
+            return nil
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        }
+    }
+    
+    var title: String {
+        switch self {
+        case .system:
+            return "System"
+        case .light:
+            return "Light"
+        case .dark:
+            return "Dark"
+        }
+    }
+    
+    static let foreground = Color("foreground")
+    static let background = Color("background")
+    static let highlightedYellow = Color("highlighted_yellow")
+    static let highlightedRed = Color("highlighted_red")
+    static let highlightedGreen = Color("highlighted_green")
 }
