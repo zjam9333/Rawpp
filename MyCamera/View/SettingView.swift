@@ -56,7 +56,7 @@ struct SettingView: View {
         .navigationViewStyle(.stack)
     }
     
-    @ViewBuilder func sliderCell(title: String, property: Binding<RangeCustomizeValue<Float>>) -> some View {
+    @ViewBuilder func sliderCell(title: String, property: Binding<CustomizeValue<Float>>) -> some View {
         let old = property.wrappedValue
         HStack(alignment: .center) {
             VStack(alignment: .leading) {

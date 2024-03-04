@@ -50,7 +50,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var showingEVIndicators = false
     @Published var isAppInBackground = false
     
-    @Published var cropFactor: RangeCustomizeValue<CGFloat> = .init(name: "CustomizeValue_cropFactor", default: 1, minValue: 1, maxValue: 2)
+    @Published var cropFactor: CustomizeValue<CGFloat> = .init(name: "CustomizeValue_cropFactor", default: 1, minValue: 1, maxValue: 2)
     
     private let feedbackGenerator = UISelectionFeedbackGenerator()
     
@@ -228,7 +228,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         for _ in 0..<burstTime {
             burstObject?.current += 1
             
-            let result = await service.capturePhoto(rawOption: rawOption.value, location: lastLocation, flashMode: isFlashOn ? .on : .off, cropFactor: max(cropFactor.value, 1))
+            let result = await service.capturePhoto(rawOption: rawOption.value, location: lastLocation, flashMode: isFlashOn ? .on : .off, cropFactor: max(CGFloat(cropFactor.value), 1))
             switch result {
             case .failure(let alert):
                 var alert = alert

@@ -242,143 +242,95 @@ extension AVCaptureVideoOrientation {
     }
 }
 
-protocol CustomCacheProtocol {
-    associatedtype CustomCacheElement
+protocol CustomizeBasicValue: Equatable {
     
-    var customCacheKey: String {
-        get
-    }
-    
-    var customCacheValue: CustomCacheElement? {
-        set get
-    }
 }
 
-extension CustomCacheProtocol {
-    var customCacheValue: CustomCacheElement? {
-        set {
-            UserDefaults.standard.setValue(newValue, forKey: customCacheKey)
-        }
-        get {
-            return UserDefaults.standard.value(forKey: customCacheKey) as? CustomCacheElement
-        }
-    }
+extension Float: CustomizeBasicValue {
+    
 }
 
-struct RangeCustomizeValue<Value>: Equatable, CustomCacheProtocol where Value: Comparable {
-    typealias CustomCacheElement = Value
+extension UInt8: CustomizeBasicValue {
+    
+}
+
+extension CGFloat: CustomizeBasicValue {
+    
+}
+
+struct CustomizeValue<Value> where Value: CustomizeBasicValue {
     
     let name: String
-    let `default`: Value
-    let minValue: Value
-    let maxValue: Value
+    
     var value: Value {
-        didSet {
-            cachedValue = value
+        set {
+            if checkInRange?(newValue) == false {
+                return
+            }
+            internalValue = newValue
+        }
+        get {
+            return internalValue
         }
     }
     
-    init(name: String, default: Value, minValue: Value, maxValue: Value) {
-        self.name = name
-        self.default = `default`
-        self.minValue = minValue
-        self.maxValue = maxValue
-        self.value = UserDefaults.standard.value(forKey: "CustomizeValue_\(name)") as? Value ?? `default`
+    private var internalValue: Value {
+        didSet {
+            UserDefaults.standard[customCacheKey] = internalValue
+        }
     }
+    
+    let `default`: Value
+    let maxValue: Value
+    let minValue: Value
+    
+    private let checkInRange: ((Value) -> Bool)?
     
     var customCacheKey: String {
         return "CustomizeValue_\(name)"
     }
     
-    private var cachedValue: Value {
-        set {
-            if newValue >= minValue && newValue <= maxValue {
-                customCacheValue = newValue
-            }
-        }
-        get {
-            let g = customCacheValue
-            return g ?? `default`
-        }
-    }
-    
     mutating func reset() {
         value = `default`
-    }
-}
-
-struct MappedRangeCustomizeValue<Value, MappedValue>: Equatable where Value: Comparable, MappedValue: Comparable {
-    static func == (lhs: MappedRangeCustomizeValue<Value, MappedValue>, rhs: MappedRangeCustomizeValue<Value, MappedValue>) -> Bool {
-        return lhs.wrapObject == rhs.wrapObject
-    }
-    
-    private let mapSetter: (Value) -> MappedValue
-    private let mapGetter: (MappedValue) -> Value
-    
-    init(name: String, default: Value, minValue: Value, maxValue: Value, set: @escaping (Value) -> MappedValue, get: @escaping (MappedValue) -> Value) {
-        self.mapSetter = set
-        self.mapGetter = get
-        self.wrapObject = .init(name: name, default: set(`default`), minValue: set(minValue), maxValue: set(maxValue))
-    }
-    
-    var value: Value {
-        set {
-            wrapObject.value = mapSetter(newValue)
-        }
-        get {
-            return mapGetter(wrapObject.value)
-        }
-    }
-    
-    var `default`: Value {
-        return mapGetter(wrapObject.default)
-    }
-    
-    private var wrapObject: RangeCustomizeValue<MappedValue>
-}
-
-struct CustomizeValue<Value>: Equatable, CustomCacheProtocol where Value: Equatable {
-    
-    typealias CustomCacheElement = Value
-    
-    let name: String
-    let `default`: Value
-    var value: Value {
-        didSet {
-            cachedValue = value
-        }
     }
     
     init(name: String, default: Value) {
         self.name = name
         self.default = `default`
-        self.value = UserDefaults.standard.value(forKey: "CustomizeValue_\(name)") as? Value ?? `default`
+        self.internalValue = UserDefaults.standard["CustomizeValue_\(name)"] as? Value ?? `default`
+        self.maxValue = `default`
+        self.minValue = `default`
+        self.checkInRange = nil
     }
     
-    var customCacheKey: String {
-        return "CustomizeValue_\(name)"
-    }
-    
-    private var cachedValue: Value {
-        set {
-            customCacheValue = newValue
+    init(name: String, default: Value, minValue: Value, maxValue: Value) where Value: Comparable {
+        assert(minValue <= `default` && `default` <= maxValue, "value \(`default`) must in range \(minValue)...\(maxValue)")
+        self.name = name
+        self.default = `default`
+        self.internalValue = UserDefaults.standard["CustomizeValue_\(name)"] as? Value ?? `default`
+        self.maxValue = maxValue
+        self.minValue = minValue
+        self.checkInRange = { val in
+            guard minValue <= val && val <= maxValue else {
+                return false
+            }
+            return true
         }
-        get {
-            let g = customCacheValue
-            return g ?? `default`
-        }
-    }
-    
-    mutating func reset() {
-        value = `default`
     }
 }
 
-
-struct MappedCustomizeValue<Value, MappedValue>: Equatable where Value: Equatable, MappedValue: Equatable {
-    static func == (lhs: MappedCustomizeValue<Value, MappedValue>, rhs: MappedCustomizeValue<Value, MappedValue>) -> Bool {
-        return lhs.wrapObject == rhs.wrapObject
+extension UserDefaults {
+    subscript(_ key: String) -> Any? {
+        set {
+            setValue(newValue, forKey: key)
+        }
+        get {
+            return value(forKey: key)
+        }
     }
+}
+
+struct MappedCustomizeValue<Value, MappedValue> where Value: Equatable, MappedValue: CustomizeBasicValue {
     
     private let mapSetter: (Value) -> MappedValue
     private let mapGetter: (MappedValue) -> Value
@@ -387,6 +339,12 @@ struct MappedCustomizeValue<Value, MappedValue>: Equatable where Value: Equatabl
         self.mapSetter = set
         self.mapGetter = get
         self.wrapObject = .init(name: name, default: set(`default`))
+    }
+    
+    init(name: String, default: Value, minValue: Value, maxValue: Value, set: @escaping (Value) -> MappedValue, get: @escaping (MappedValue) -> Value) where Value: Comparable, MappedValue: Comparable {
+        self.mapSetter = set
+        self.mapGetter = get
+        self.wrapObject = .init(name: name, default: set(`default`), minValue: set(minValue), maxValue: set(maxValue))
     }
     
     var value: Value {
@@ -406,20 +364,19 @@ struct MappedCustomizeValue<Value, MappedValue>: Equatable where Value: Equatabl
 }
 
 class CustomSettingProperties: ObservableObject {
-    typealias Value = Float
     
     @Published var raw = Raw()
     @Published var output = Output()
     @Published var color = Color()
     
     struct Raw {
-        var boostAmount = RangeCustomizeValue<Value>(name: "RawFilterProperties_boostAmount", default: 1, minValue: 0, maxValue: 1)
+        var boostAmount = CustomizeValue<Float>(name: "RawFilterProperties_boostAmount", default: 1, minValue: 0, maxValue: 1)
     }
     
     struct Output {
-        var heifLossyCompressionQuality = RangeCustomizeValue<Value>(name: "RawFilterProperties_heifLossyCompressionQuality", default: 0.7, minValue: 0.1, maxValue: 1)
+        var heifLossyCompressionQuality = CustomizeValue<Float>(name: "RawFilterProperties_heifLossyCompressionQuality", default: 0.7, minValue: 0.1, maxValue: 1)
         
-        var maxMegaPixel = MappedRangeCustomizeValue<MegaPixel, Int64>(name: "RawFilterProperties_maxMegaPixel", default: .m12, minValue: .lowest, maxValue: .highest) { p in
+        var maxMegaPixel = MappedCustomizeValue<MegaPixel, MegaPixel.RawValue>(name: "RawFilterProperties_maxMegaPixel", default: .m12, minValue: .lowest, maxValue: .highest) { p in
             return p.rawValue
         } get: { v in
             return .init(rawValue: v) ?? .m12
@@ -490,7 +447,7 @@ enum Result<A, B> {
     case failure(B)
 }
 
-enum MegaPixel: Int64, Comparable, CaseIterable {
+enum MegaPixel: UInt8, Comparable, CaseIterable {
     static func < (lhs: MegaPixel, rhs: MegaPixel) -> Bool {
         return lhs.rawValue < rhs.rawValue
     }
@@ -516,7 +473,7 @@ enum MegaPixel: Int64, Comparable, CaseIterable {
         guard oldPixels > 0 else {
             return 1
         }
-        let newPixels = CGFloat(rawValue * 1_000_000)
+        let newPixels = CGFloat(rawValue) * 1_000_000
         let s = sqrt(newPixels / oldPixels)
         return s
     }
@@ -529,7 +486,7 @@ enum ScaleInterpolation {
     case bicubic
 }
 
-enum ThemeColor: Int {
+enum ThemeColor: UInt8 {
     case system = 0
     case light = 1
     case dark = 2
