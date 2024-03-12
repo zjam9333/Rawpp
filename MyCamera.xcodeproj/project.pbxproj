@@ -22,23 +22,7 @@
 		1CB4102826F1FD8A00D8E931 /* CameraViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB4102726F1FD8A00D8E931 /* CameraViewModel.swift */; };
 		1CB4102C26F2001500D8E931 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB4102B26F2001500D8E931 /* CameraView.swift */; };
 		1CC7E9CC2ADCE21B00D0432B /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1CC7E9CB2ADCE21B00D0432B /* Launch Screen.storyboard */; };
-		1CF423D82B6F7D1D0055F869 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CF423D72B6F7D1D0055F869 /* WidgetKit.framework */; };
-		1CF423DA2B6F7D1D0055F869 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CF423D92B6F7D1D0055F869 /* SwiftUI.framework */; };
-		1CF423DD2B6F7D1D0055F869 /* widgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CF423DC2B6F7D1D0055F869 /* widgetBundle.swift */; };
-		1CF423DF2B6F7D1D0055F869 /* widget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CF423DE2B6F7D1D0055F869 /* widget.swift */; };
-		1CF423E12B6F7D1F0055F869 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1CF423E02B6F7D1F0055F869 /* Assets.xcassets */; };
-		1CF423E52B6F7D1F0055F869 /* widgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1CF423D52B6F7D1D0055F869 /* widgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
-
-/* Begin PBXContainerItemProxy section */
-		1CF423E32B6F7D1F0055F869 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 1CB4100826F1FA7300D8E931 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 1CF423D42B6F7D1D0055F869;
-			remoteInfo = widgetExtension;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		1CF423E62B6F7D1F0055F869 /* Embed Foundation Extensions */ = {
@@ -47,7 +31,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				1CF423E52B6F7D1F0055F869 /* widgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -72,13 +55,8 @@
 		1CB4102726F1FD8A00D8E931 /* CameraViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraViewModel.swift; sourceTree = "<group>"; };
 		1CB4102B26F2001500D8E931 /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
 		1CC7E9CB2ADCE21B00D0432B /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
-		1CF423D52B6F7D1D0055F869 /* widgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = widgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CF423D72B6F7D1D0055F869 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		1CF423D92B6F7D1D0055F869 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
-		1CF423DC2B6F7D1D0055F869 /* widgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = widgetBundle.swift; sourceTree = "<group>"; };
-		1CF423DE2B6F7D1D0055F869 /* widget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = widget.swift; sourceTree = "<group>"; };
-		1CF423E02B6F7D1F0055F869 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		1CF423E22B6F7D1F0055F869 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,15 +64,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		1CF423D22B6F7D1D0055F869 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				1CF423DA2B6F7D1D0055F869 /* SwiftUI.framework in Frameworks */,
-				1CF423D82B6F7D1D0055F869 /* WidgetKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,7 +88,6 @@
 			isa = PBXGroup;
 			children = (
 				1CB4101226F1FA7300D8E931 /* MyCamera */,
-				1CF423DB2B6F7D1D0055F869 /* widget */,
 				1CF423D62B6F7D1D0055F869 /* Frameworks */,
 				1CB4101126F1FA7300D8E931 /* Products */,
 			);
@@ -129,7 +97,6 @@
 			isa = PBXGroup;
 			children = (
 				1CB4101026F1FA7300D8E931 /* MyCamera.app */,
-				1CF423D52B6F7D1D0055F869 /* widgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -176,17 +143,6 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		1CF423DB2B6F7D1D0055F869 /* widget */ = {
-			isa = PBXGroup;
-			children = (
-				1CF423DC2B6F7D1D0055F869 /* widgetBundle.swift */,
-				1CF423DE2B6F7D1D0055F869 /* widget.swift */,
-				1CF423E02B6F7D1F0055F869 /* Assets.xcassets */,
-				1CF423E22B6F7D1F0055F869 /* Info.plist */,
-			);
-			path = widget;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -202,29 +158,11 @@
 			buildRules = (
 			);
 			dependencies = (
-				1CF423E42B6F7D1F0055F869 /* PBXTargetDependency */,
 			);
 			name = MyCamera;
 			productName = MyCamera;
 			productReference = 1CB4101026F1FA7300D8E931 /* MyCamera.app */;
 			productType = "com.apple.product-type.application";
-		};
-		1CF423D42B6F7D1D0055F869 /* widgetExtension */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 1CF423E92B6F7D1F0055F869 /* Build configuration list for PBXNativeTarget "widgetExtension" */;
-			buildPhases = (
-				1CF423D12B6F7D1D0055F869 /* Sources */,
-				1CF423D22B6F7D1D0055F869 /* Frameworks */,
-				1CF423D32B6F7D1D0055F869 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = widgetExtension;
-			productName = widgetExtension;
-			productReference = 1CF423D52B6F7D1D0055F869 /* widgetExtension.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -237,9 +175,6 @@
 				TargetAttributes = {
 					1CB4100F26F1FA7300D8E931 = {
 						CreatedOnToolsVersion = 12.5;
-					};
-					1CF423D42B6F7D1D0055F869 = {
-						CreatedOnToolsVersion = 15.2;
 					};
 				};
 			};
@@ -257,7 +192,6 @@
 			projectRoot = "";
 			targets = (
 				1CB4100F26F1FA7300D8E931 /* MyCamera */,
-				1CF423D42B6F7D1D0055F869 /* widgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -270,14 +204,6 @@
 				1CC7E9CC2ADCE21B00D0432B /* Launch Screen.storyboard in Resources */,
 				1CB4101B26F1FA7500D8E931 /* Preview Assets.xcassets in Resources */,
 				1CB4101826F1FA7500D8E931 /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		1CF423D32B6F7D1D0055F869 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				1CF423E12B6F7D1F0055F869 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -303,24 +229,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		1CF423D12B6F7D1D0055F869 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				1CF423DD2B6F7D1D0055F869 /* widgetBundle.swift in Sources */,
-				1CF423DF2B6F7D1D0055F869 /* widget.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		1CF423E42B6F7D1F0055F869 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 1CF423D42B6F7D1D0055F869 /* widgetExtension */;
-			targetProxy = 1CF423E32B6F7D1F0055F869 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		1CB4101D26F1FA7500D8E931 /* Debug */ = {
@@ -497,73 +406,6 @@
 			};
 			name = Release;
 		};
-		1CF423E72B6F7D1F0055F869 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = F928WG99XC;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = widget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = widget;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.myshoplinestg.sl.test167.debug.widget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		1CF423E82B6F7D1F0055F869 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = F928WG99XC;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = widget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = widget;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.myshoplinestg.sl.test167.debug.widget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -581,15 +423,6 @@
 			buildConfigurations = (
 				1CB4102026F1FA7500D8E931 /* Debug */,
 				1CB4102126F1FA7500D8E931 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		1CF423E92B6F7D1F0055F869 /* Build configuration list for PBXNativeTarget "widgetExtension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				1CF423E72B6F7D1F0055F869 /* Debug */,
-				1CF423E82B6F7D1F0055F869 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

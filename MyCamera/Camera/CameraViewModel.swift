@@ -85,6 +85,8 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         $isAppInBackground.receive(on: DispatchQueue.main).sink { [weak self] isBack in
             if isBack {
                 self?.stopAcc()
+                // 进入后台恢复某些设置
+                self?.resetToDefault()
             } else {
                 self?.startAcc()
             }
@@ -214,7 +216,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 timerSeconds = nil
             }
         }
-        shutterTimer = 0 // 定时重置
         await startCapture()
     }
     
@@ -224,7 +225,8 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         if burstTime > 1 {
             burstObject = .init(total: burstTime, current: 0)
         }
-        photos.insert(.init(data: nil), at: 0)
+        let newPhotoObj = Photo(data: nil)
+        photos.insert(newPhotoObj, at: 0)
         for _ in 0..<burstTime {
             burstObject?.current += 1
             
@@ -237,17 +239,17 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 }
                 alertError = alert
             case .success(let pic):
-                if let data = pic {
-                    var p0 = photos[0]
+                if let data = pic, let thatIndex = photos.firstIndex(of: newPhotoObj) {
+                    // 这里不可以再拿0，因为可能快速连续点击拍摄，导致数组已变化
+                    var p0 = photos[thatIndex]
                     p0.data = data
                     p0.count += 1
-                    photos[0] = p0
+                    photos[thatIndex] = p0
                 }
             }
             
         }
         burstObject = nil
-        burstCount = 1 // 连拍重置
         isProcessing = false
         
         let maxCnt = 5
@@ -255,6 +257,13 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         if photos.count > maxCnt {
             photos = Array(photos.prefix(maxCnt))
         }
+    }
+    
+    private func resetToDefault() {
+        burstCount = 1
+        shutterTimer = 0
+        exposureMode = .auto
+        exposureValue = .zero
     }
     
     func toggleFrontCamera() {

@@ -79,7 +79,7 @@ struct CameraView: View {
     }
     
     @ViewBuilder private var topActions: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 20) {
             Button {
                 viewModel.touchFeedback()
                 viewModel.switchFlash()
@@ -89,16 +89,6 @@ struct CameraView: View {
             }
             .accentColor(viewModel.isFlashOn ? ThemeColor.highlightedYellow : ThemeColor.foreground)
             .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
-            
-            Button {
-                viewModel.touchFeedback()
-                viewModel.toggleFrontCamera()
-            } label: {
-                Image(systemName: "arrow.triangle.2.circlepath.camera")
-                    .font(.system(size: 20))
-                    .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
-            }
-            .accentColor(ThemeColor.foreground)
             
             Button {
                 viewModel.touchFeedback()
@@ -301,7 +291,43 @@ struct CameraView: View {
                         lensesSelection
                     }
                 }
+                
+                Color.clear.overlay(alignment: .top) {
+                    exposureInfo
+                }
             }
+    }
+    
+    
+    @ViewBuilder private var exposureInfo: some View {
+        Button {
+            viewModel.showSetting = true
+        } label: {
+            HStack(alignment: .top, spacing: 8) {
+                switch viewModel.exposureMode {
+                case .auto:
+                    Text(String(format: "EV %.1f", viewModel.exposureValue.floatValue))
+                        .font(.system(size: 12))
+                        .foregroundStyle(ThemeColor.highlightedGreen)
+                case .manual:
+                    Text(String(format: "ISO %.0f", viewModel.ISO.floatValue))
+                        .font(.system(size: 12))
+                        .foregroundStyle(ThemeColor.highlightedRed)
+                    Text("SS \(viewModel.shutterSpeed.description)")
+                        .font(.system(size: 12))
+                        .foregroundStyle(ThemeColor.highlightedRed)
+                }
+                Text("\(sharedPropertyies.output.maxMegaPixel.value.rawValue)MP")
+                    .font(.system(size: 12))
+                    .foregroundStyle(ThemeColor.highlightedYellow)
+            }
+            .padding(6)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(.gray.opacity(0.5))
+            )
+        }
+        .padding()
     }
     
     @ViewBuilder private var lensesSelection: some View {
@@ -415,32 +441,15 @@ struct CameraView: View {
             }
         }
         .overlay(alignment: .trailing) {
-            
-            VStack(alignment: .trailing, spacing: 8) {
-                switch viewModel.exposureMode {
-                case .auto:
-                    Text(String(format: "EV %.1f", viewModel.exposureValue.floatValue))
-                        .font(.system(size: 12))
-                        .foregroundStyle(ThemeColor.highlightedGreen)
-                case .manual:
-                    Text(String(format: "ISO %.0f", viewModel.ISO.floatValue))
-                        .font(.system(size: 12))
-                        .foregroundStyle(ThemeColor.highlightedRed)
-                    Text("SS \(viewModel.shutterSpeed.description)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(ThemeColor.highlightedRed)
-                }
-                Text("\(sharedPropertyies.output.maxMegaPixel.value.rawValue)MP")
-                    .font(.system(size: 12))
-                    .foregroundStyle(ThemeColor.highlightedYellow)
+            Button {
+                viewModel.touchFeedback()
+                viewModel.toggleFrontCamera()
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath.camera")
+                    .font(.system(size: 30, weight: .thin))
+                    .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             }
-            .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
-            .padding(10)
-            .padding(.trailing, 6)
-            .clipShape(Rectangle())
-            .onTapGesture {
-                viewModel.showSetting = true
-            }
+            .accentColor(ThemeColor.foreground)
         }
         .padding(.horizontal, 20)
         .background()
