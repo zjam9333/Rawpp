@@ -15,11 +15,11 @@ import CoreLocation
 class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let service = CameraService()
     
-    @Published var photos: [Photo] = []
-    @Published var alertError: AlertError?
-    @Published var isFlashOn = false
-    @Published var isCapturing = false
-    @Published var isProcessing = false
+    @Published private(set) var photos: [Photo] = []
+    @Published private(set) var alertError: AlertError?
+    @Published private(set) var isFlashOn = false
+    @Published private(set) var isCapturing = false
+    @Published private(set) var isProcessing = false
     @Published var rawOption = MappedCustomizeValue<RAWSaveOption, RAWSaveOption.RawValue>(name: "CameraViewModelCachedRawOption", default: .heif) { op in
         return op.rawValue
     } get: { va in
@@ -36,10 +36,10 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var burstCount: Int = 1
     @Published private(set) var burstObject: BurstObject? = nil
     
-    @Published var exposureMode = ExposureMode.auto
-    @Published var exposureValue: ExposureValue = .zero
-    @Published var shutterSpeed: ShutterSpeed = .percent100
-    @Published var ISO: ISOValue = .iso400
+    @Published var exposureMode = ExposureMode.program
+    
+    @Published var currentExposureInfo: DeviceExposureInfo = .unknown
+    @Published var exposureSetting: ExposureSetting = .init()
     
     @Published var videoOrientation: AVCaptureVideoOrientation = .portrait
     
@@ -64,6 +64,8 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     private var subscriptions = Set<AnyCancellable>()
+    
+    private var exposureMeterTimer: Timer?
     
     override init() {
         super.init()
@@ -140,7 +142,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         .store(in: &self.subscriptions)
         
-        $exposureValue.combineLatest($exposureMode).combineLatest($ISO).combineLatest($shutterSpeed).receive(on: DispatchQueue.main).sink { [weak self] _ in
+        $exposureSetting.receive(on: DispatchQueue.main).sink { [weak self] _ in
             guard let self = self else {
                 return
             }
@@ -157,6 +159,11 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 await self.service.orientationChanged(orientation: ori)
             }
         }.store(in: &self.subscriptions)
+        
+        exposureMeterTimer = Timer.init(timeInterval: 1, repeats: true) { [weak self] t in
+            self?.checkEV()
+        }
+        RunLoop.main.add(exposureMeterTimer!, forMode: .common)
     }
     
     // MARK: Camera Service
@@ -262,8 +269,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private func resetToDefault() {
         burstCount = 1
         shutterTimer = 0
-        exposureMode = .auto
-        exposureValue = .zero
+        exposureSetting = .init()
     }
     
     func toggleFrontCamera() {
@@ -286,9 +292,10 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private func setExposure() async {
         switch exposureMode {
         case .auto:
-            await service.setExposureValue(exposureValue.floatValue)
-        case .manual:
-            await service.setCustomExposure(shutterSpeed: shutterSpeed.cmTime, iso: ISO.floatValue)
+            await service.setExposureValue(exposureSetting.ev.floatValue)
+        case .program, .manual:
+            let e = exposureSetting
+            await service.setCustomExposure(ev: e.ev.floatValue, shutterSpeed: e.ss.cmTime, iso: e.iso.floatValue)
         }
     }
     
@@ -390,5 +397,139 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         if let fi = locations.first {
             lastLocation = fi
         }
+    }
+    
+    // MARK: Program Exposure
+    
+    func checkEV() {
+        guard let device = currentCamera?.device else {
+            return
+        }
+        let info = DeviceExposureInfo(duration: device.exposureDuration, iso: device.iso, evOffset: device.exposureTargetOffset)
+        print("current DeviceExposureInfo", info)
+        currentExposureInfo = info
+        programExposure()
+    }
+    
+    func programExposure() {
+        guard exposureMode == .program else {
+            return
+        }
+//        // 负反馈异常处理
+//        guard customExposureOperating == false else {
+//            print("program Exposure", "abort")
+//            customExposureAbortTimes += 1
+//            if customExposureAbortTimes > 20 {
+//                customExposureAbortTimes = 0
+//                customExposureOperating = false
+//            }
+//            return
+//        }
+        
+        
+        // 检查差了多少档曝光
+        let currentEVOffset = currentExposureInfo.offset
+//        guard currentEVOffset != .zero else {
+//            print("program Exposure", "OK")
+//            return
+//        }
+        
+        let isOverExposure = currentEVOffset.floatValue > 0
+        
+        guard let currentIndex = ExposureValue.presets.firstIndex(of: currentEVOffset), let zeroIndex = ExposureValue.presets.firstIndex(of: .zero) else {
+            return
+        }
+        
+        var step: Int = abs(currentIndex - zeroIndex)
+//        guard step > 1 else {
+//            print("program Exposure", "OK")
+//            return
+//        }
+        
+        // 找出组合
+        let allShutters = ShutterSpeed.presets.filter { ss in
+            return ss.floatValue <= 0.11
+        } // 太慢的不用
+        let allISOs = ISOValue.presets
+        
+        var m = exposureSetting
+        var indexShutter = allShutters.firstIndex(of: m.ss) ?? 0
+        var indexISO = allISOs.firstIndex(of: m.iso) ?? 0
+        
+        while step > 0 {
+            step -= 1
+            if isOverExposure {
+                if indexShutter < allShutters.count - 1 {
+                    indexShutter += 1
+                } else if indexISO > 0 {
+                    indexISO -= 1
+                } else {
+                    break
+                }
+            } else {
+                if indexShutter > 0 {
+                    indexShutter -= 1
+                } else if indexISO < allISOs.count - 1 {
+                    indexISO += 1
+                } else {
+                    break
+                }
+            }
+        }
+        
+        // 找到s和i的重合位置
+        // 两个向左移到最小的位置
+        let minIndex = min(indexISO, indexShutter)
+        indexISO -= minIndex
+        indexShutter -= minIndex
+        let maxLength = min(allISOs.count - indexISO, allShutters.count - indexShutter)
+        do {
+            // usable comp
+            let comp = (0..<maxLength).map { ind in
+                return (allShutters[indexShutter + ind], allISOs[indexISO + ind])
+            }
+            print("program Exposure", "components", comp)
+        }
+        var indexOffset = maxLength / 2
+        do {
+            // 调快慢
+            indexOffset = pickValueBetween(minVal: 0, maxVal: maxLength - 1, input: indexOffset + m.faster) { i, j in
+                return i < j
+            }
+        }
+        
+        indexISO += indexOffset
+        indexShutter += indexOffset
+        
+        m.ss = allShutters[indexShutter]
+        m.iso = allISOs[indexISO]
+        print("program Exposure", m)
+        exposureSetting = m
+        
+        /*
+         let speeds = ShutterSpeed.presets
+         var newSpeed: ShutterSpeed?
+         let isos = ISOValue.presets
+         var newISO: ISOValue?
+         
+         if val <= 110 {
+         print("program Exposure", "under exposure")
+         // under exposure
+         newSpeed = speeds.filter { s in
+         s < shutterSpeed
+         }.max()
+         } else if val >= 144 {
+         print("program Exposure", "under exposure")
+         // over exposure
+         newSpeed = speeds.filter { s in
+         s > shutterSpeed
+         }.min()
+         }
+         
+         if let newSpeed = newSpeed {
+         print("program Exposure", "new Speed", newSpeed)
+         shutterSpeed = newSpeed
+         }
+         */
     }
 }

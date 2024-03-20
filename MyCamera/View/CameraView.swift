@@ -142,6 +142,8 @@ struct CameraView: View {
                 case .auto:
                     viewModel.exposureMode = .manual
                 case .manual:
+                    viewModel.exposureMode = .program
+                case .program:
                     viewModel.exposureMode = .auto
                 }
             } label: {
@@ -150,8 +152,11 @@ struct CameraView: View {
                     case .auto:
                         Text("AUTO")
                             .foregroundStyle(ThemeColor.highlightedGreen)
+                    case .program:
+                        Text("PROG")
+                            .foregroundStyle(ThemeColor.highlightedGreen)
                     case .manual:
-                        Text("MAN")
+                        Text("MANU")
                             .foregroundStyle(ThemeColor.highlightedRed)
                     }
                 }
@@ -249,28 +254,38 @@ struct CameraView: View {
                     VStack {
                         switch viewModel.exposureMode {
                         case .auto:
-                            valuesIndicator(currentValue: viewModel.exposureValue, values: ExposureValue.presets) { va in
+                            valuesIndicator(currentValue: viewModel.exposureSetting.ev, values: ExposureValue.presets) { va in
                                 return ExposureValue.integers.contains(va)
                             }
-                            Text(String(format: "EV %.1f", viewModel.exposureValue.floatValue))
+                            Text(String(format: "EV %.1f", viewModel.exposureSetting.ev.floatValue))
+                                .font(.system(size: 24))
+                                .foregroundStyle(.white)
+                        case .program:
+                            Text(String(format: "FASTER %d", viewModel.exposureSetting.faster))
+                                .font(.system(size: 24))
+                                .foregroundStyle(.white)
+                            valuesIndicator(currentValue: viewModel.exposureSetting.ev, values: ExposureValue.presets) { va in
+                                return ExposureValue.integers.contains(va)
+                            }
+                            Text(String(format: "EV %.1f", viewModel.exposureSetting.ev.floatValue))
                                 .font(.system(size: 24))
                                 .foregroundStyle(.white)
                         case .manual:
                             HStack {
                                 VStack {
-                                    valuesIndicator(currentValue: viewModel.ISO, values: ISOValue.presets) { va in
+                                    valuesIndicator(currentValue: viewModel.exposureSetting.iso, values: ISOValue.presets) { va in
                                         return ISOValue.integers.contains(va)
                                     }
-                                    Text(String(format: "ISO %.0f", viewModel.ISO.floatValue))
+                                    Text(String(format: "ISO %.0f", viewModel.exposureSetting.iso.floatValue))
                                         .font(.system(size: 24))
                                         .foregroundStyle(.white)
                                 }
                                 
                                 VStack {
-                                    valuesIndicator(currentValue: viewModel.shutterSpeed, values: ShutterSpeed.presets) { va in
+                                    valuesIndicator(currentValue: viewModel.exposureSetting.ss, values: ShutterSpeed.presets) { va in
                                         return ShutterSpeed.integers.contains(va)
                                     }
-                                    Text(String(format: "SS %@", viewModel.shutterSpeed.description))
+                                    Text(String(format: "SS %@", viewModel.exposureSetting.ss.description))
                                         .font(.system(size: 24))
                                         .foregroundStyle(.white)
                                 }
@@ -306,16 +321,32 @@ struct CameraView: View {
             HStack(alignment: .top, spacing: 8) {
                 switch viewModel.exposureMode {
                 case .auto:
-                    Text(String(format: "EV %.1f", viewModel.exposureValue.floatValue))
+                    valuesIndicator(currentValue: viewModel.currentExposureInfo.offset, center: .zero, preferValue: viewModel.exposureSetting.ev, values: ExposureValue.presets) { va in
+                        return ExposureValue.integers.contains(va)
+                    }
+                case .manual:
+                    Text(String(format: "ISO %.0f", viewModel.exposureSetting.iso.floatValue))
+                        .font(.system(size: 12))
+                        .foregroundStyle(ThemeColor.highlightedRed)
+                    Text("SS \(viewModel.exposureSetting.ss.description)")
+                        .font(.system(size: 12))
+                        .foregroundStyle(ThemeColor.highlightedRed)
+                    valuesIndicator(currentValue: viewModel.currentExposureInfo.offset, center: .zero, preferValue: viewModel.exposureSetting.ev, values: ExposureValue.presets) { va in
+                        return ExposureValue.integers.contains(va)
+                    }
+                case .program:
+                    Text(String(format: "ISO %.0f", viewModel.exposureSetting.iso.floatValue))
                         .font(.system(size: 12))
                         .foregroundStyle(ThemeColor.highlightedGreen)
-                case .manual:
-                    Text(String(format: "ISO %.0f", viewModel.ISO.floatValue))
+                    Text("SS \(viewModel.exposureSetting.ss.description)")
                         .font(.system(size: 12))
-                        .foregroundStyle(ThemeColor.highlightedRed)
-                    Text("SS \(viewModel.shutterSpeed.description)")
+                        .foregroundStyle(ThemeColor.highlightedGreen)
+                    Text("FA \(viewModel.exposureSetting.faster)")
                         .font(.system(size: 12))
-                        .foregroundStyle(ThemeColor.highlightedRed)
+                        .foregroundStyle(ThemeColor.highlightedGreen)
+                    valuesIndicator(currentValue: viewModel.currentExposureInfo.offset, center: .zero, preferValue: viewModel.exposureSetting.ev, values: ExposureValue.presets) { va in
+                        return ExposureValue.integers.contains(va)
+                    }
                 }
                 Text("\(sharedPropertyies.output.maxMegaPixel.value.rawValue)MP")
                     .font(.system(size: 12))
@@ -324,7 +355,7 @@ struct CameraView: View {
             .padding(6)
             .background(
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(.gray.opacity(0.5))
+                    .fill(.black.opacity(0.5))
             )
         }
         .padding()
@@ -455,7 +486,7 @@ struct CameraView: View {
         .background()
     }
     
-    @ViewBuilder func valuesIndicator<Element>(currentValue: Element, values: [Element], isInteger: @escaping (Element) -> Bool) -> some View where Element: Hashable {
+    @ViewBuilder func valuesIndicator<Element>(currentValue: Element, center: Element? = nil, preferValue: Element? = nil, values: [Element], isInteger: @escaping (Element) -> Bool) -> some View where Element: Hashable {
         HStack(alignment: .bottom, spacing: 2) {
             ForEach(values, id: \.self) { ev in
                 let isSelected = currentValue == ev
@@ -475,6 +506,21 @@ struct CameraView: View {
                                 .frame(width: 4, height: 4)
                                 .offset(y: -8)
                         }
+                        if ev == center {
+                            Image(systemName: "triangle.fill")
+                                .resizable()
+                                .rotationEffect(.degrees(180))
+                                .accentColor(ThemeColor.highlightedGreen)
+                                .frame(width: 4, height: 4)
+                                .offset(y: -8)
+                        }
+                        if ev == preferValue {
+                            Image(systemName: "triangle.fill")
+                                .resizable()
+                                .accentColor(ThemeColor.highlightedYellow)
+                                .frame(width: 4, height: 4)
+                                .offset(y: 12)
+                        }
                     }
             }
         }
@@ -485,15 +531,25 @@ struct CameraView: View {
         Group {
             switch viewModel.exposureMode {
             case .auto:
-                StepDragView(isDragging: $viewModel.showingEVIndicators, value: $viewModel.exposureValue, items: ExposureValue.presets) {
+                StepDragView(isDragging: $viewModel.showingEVIndicators, value: $viewModel.exposureSetting.ev, items: ExposureValue.presets) {
                     viewModel.touchFeedback()
                 }
             case .manual:
                 HStack {
-                    StepDragView(isDragging: $viewModel.showingEVIndicators, value: $viewModel.ISO, items: ISOValue.presets) {
+                    StepDragView(isDragging: $viewModel.showingEVIndicators, value: $viewModel.exposureSetting.iso, items: ISOValue.presets) {
                         viewModel.touchFeedback()
                     }
-                    StepDragView(isDragging: $viewModel.showingEVIndicators, value: $viewModel.shutterSpeed, items: ShutterSpeed.presets) {
+                    StepDragView(isDragging: $viewModel.showingEVIndicators, value: $viewModel.exposureSetting.ss, items: ShutterSpeed.presets) {
+                        viewModel.touchFeedback()
+                    }
+                }
+                
+            case .program:
+                HStack {
+                    StepDragView(isDragging: $viewModel.showingEVIndicators, value: $viewModel.exposureSetting.faster, items: Array(-4...4)) {
+                        viewModel.touchFeedback()
+                    }
+                    StepDragView(isDragging: $viewModel.showingEVIndicators, value: $viewModel.exposureSetting.ev, items: ExposureValue.presets) {
                         viewModel.touchFeedback()
                     }
                 }
@@ -502,9 +558,7 @@ struct CameraView: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
             @MainActor func resetExposure() async {
-                viewModel.exposureValue = .zero
-                viewModel.shutterSpeed = .percent100
-                viewModel.ISO = .iso400
+                viewModel.exposureSetting.resetExceptMode()
                 viewModel.showingEVIndicators = true
                 try? await Task.sleep(nanoseconds: 0_010_000_000)
                 viewModel.showingEVIndicators = false

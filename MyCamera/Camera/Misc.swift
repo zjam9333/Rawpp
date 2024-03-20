@@ -74,13 +74,18 @@ struct AlertError {
 enum ExposureMode {
     case auto
     case manual
+    case program
 }
 
-struct ExposureValue: Equatable, Hashable {
+struct ExposureValue: Equatable, Hashable, CustomStringConvertible {
     private let rawValue: Int
     
     var floatValue: Float {
         return Float(rawValue) / 100
+    }
+    
+    var description: String {
+        return "\(floatValue)"
     }
     
     var text: String {
@@ -129,11 +134,15 @@ struct RAWSaveOption: OptionSet {
     }
 }
 
-struct ISOValue: Equatable, Hashable {
+struct ISOValue: Equatable, Hashable, CustomStringConvertible {
     private let rawValue: Int
     
     var floatValue: Float {
         return Float(rawValue)
+    }
+    
+    var description: String {
+        return "\(rawValue)"
     }
     
     static let iso400: ISOValue = .init(rawValue: 400)
@@ -518,4 +527,59 @@ enum ThemeColor: UInt8 {
     static let highlightedYellow = Color("highlighted_yellow")
     static let highlightedRed = Color("highlighted_red")
     static let highlightedGreen = Color("highlighted_green")
+}
+
+ func pickValueBetween<T>(minVal: T, maxVal: T, input: T, compareIsSmaller: (T, T) -> Bool) -> T {
+    if compareIsSmaller(input, minVal) {
+        return minVal
+    } else if compareIsSmaller(maxVal, input) {
+        return maxVal
+    }
+    return input
+}
+
+struct ExposureSetting {
+    var ss: ShutterSpeed = .percent100
+    var iso: ISOValue = .iso400
+    var ev: ExposureValue = .zero
+    var faster: Int = 0
+    
+    mutating func resetExceptMode() {
+        var new = ExposureSetting.init()
+        self = new
+    }
+}
+
+struct DeviceExposureInfo {
+    
+    static var unknown: DeviceExposureInfo {
+        return .init(duration: ShutterSpeed.percent100.cmTime, iso: ISOValue.iso400.floatValue, evOffset: 0)
+    }
+    
+    init(duration: CMTime, iso: Float, evOffset: Float) {
+        // 比例有问题啊。。不像ev直接算出来
+//        self.ss = ShutterSpeed.presets.min { e1, e2 in
+//            let d1 = e1.cmTime.seconds - duration.seconds
+//            let d2 = e1.cmTime.seconds - duration.seconds
+//            return abs(d1) < abs(d2)
+//        } ?? .percent100
+//        
+//        self.iso = ISOValue.presets.min { e1, e2 in
+//            let d1 = e1.floatValue - iso
+//            let d2 = e2.floatValue - iso
+//            return abs(d1) < abs(d2)
+//        } ?? .iso400
+        
+        self.offset = ExposureValue.presets.min { e1, e2 in
+            let d1 = e1.floatValue - evOffset
+            let d2 = e2.floatValue - evOffset
+            return abs(d1) < abs(d2)
+        } ?? .zero
+    }
+    
+    let offset: ExposureValue
+    
+//    let ss: ShutterSpeed
+//    
+//    let iso: ISOValue
 }

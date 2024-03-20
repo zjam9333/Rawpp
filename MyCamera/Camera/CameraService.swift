@@ -111,10 +111,6 @@ class CameraService {
         
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)
-        } else {
-            print("Could not add photo output to the session")
-            session.commitConfiguration()
-            return
         }
         
         session.commitConfiguration()
@@ -149,11 +145,8 @@ class CameraService {
         guard let device = videoDeviceInput?.device else {
             return
         }
-        let min = device.minExposureTargetBias
-        let max = device.maxExposureTargetBias
-//        print("exposureTargetBias:" , min, max)
-        guard min < bias, bias < max else {
-            return
+        let bias = pickValueBetween(minVal: device.minExposureTargetBias, maxVal: device.maxExposureTargetBias, input: bias) { a1, a2 in
+            return a1 < a2
         }
         do {
             try device.lockForConfiguration()
@@ -169,26 +162,29 @@ class CameraService {
         }
     }
     
-    func setCustomExposure(shutterSpeed: CMTime, iso: Float) async {
+    func setCustomExposure(ev: Float, shutterSpeed: CMTime, iso: Float) async {
         guard let device = videoDeviceInput?.device else {
             return
         }
-        guard device.isExposureModeSupported(.custom) else {
-            return
+        let iso = pickValueBetween(minVal: device.activeFormat.minISO, maxVal: device.activeFormat.maxISO, input: iso) { i1, i2 in
+            return i1 < i2
         }
-        let isoRange = device.activeFormat.minISO...device.activeFormat.maxISO
-        guard isoRange.contains(iso) else {
-            return
+        let shutterSpeed = pickValueBetween(minVal: device.activeFormat.minExposureDuration, maxVal: device.activeFormat.maxExposureDuration, input: shutterSpeed) { s1, s2 in
+            return s1.seconds < s2.seconds
         }
-        let shutterRange = device.activeFormat.minExposureDuration.seconds...device.activeFormat.maxExposureDuration.seconds
-        guard shutterRange.contains(shutterSpeed.seconds) else {
-            return
+        let bias = pickValueBetween(minVal: device.minExposureTargetBias, maxVal: device.maxExposureTargetBias, input: ev) { a1, a2 in
+            return a1 < a2
         }
         do {
             try device.lockForConfiguration()
-            device.exposureMode = .custom
-            let usingTime = await device.setExposureModeCustom(duration: shutterSpeed, iso: iso)
-            print("pass", shutterSpeed, "using", usingTime)
+            if device.isExposureModeSupported(.continuousAutoExposure) {
+                device.exposureMode = .continuousAutoExposure
+            } else if device.isExposureModeSupported(.autoExpose) {
+                device.exposureMode = .autoExpose
+            }
+            await device.setExposureTargetBias(bias)
+            // 虽然custom，但是保持device.exposureMode = .autoExpose可以测光
+            await device.setExposureModeCustom(duration: shutterSpeed, iso: iso)
             device.unlockForConfiguration()
         } catch {
             
