@@ -37,9 +37,14 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var burstObject: BurstObject? = nil
     
     @Published var exposureMode = ExposureMode.program
+    @Published var exposureValue = ExposureValue.zero
+    @Published var programExposureShift: Int = 0
     
-    @Published var currentExposureInfo: DeviceExposureInfo = .unknown
-    @Published var exposureSetting: ExposureSetting = .init()
+    @Published private(set) var currentExposureInfo: DeviceExposureInfo = .unknown
+    @Published var manualExposure: ExposureAdvice = .default
+    
+    private var pauseAutoExposure = false
+    @Published private(set) var programExposureAdvices: [ExposureAdvice] = []
     
     @Published var videoOrientation: AVCaptureVideoOrientation = .portrait
     
@@ -142,7 +147,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         .store(in: &self.subscriptions)
         
-        $exposureSetting.receive(on: DispatchQueue.main).sink { [weak self] _ in
+        $manualExposure.receive(on: DispatchQueue.main).sink { [weak self] _ in
             guard let self = self else {
                 return
             }
@@ -160,7 +165,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
         }.store(in: &self.subscriptions)
         
-        exposureMeterTimer = Timer.init(timeInterval: 1, repeats: true) { [weak self] t in
+        exposureMeterTimer = Timer.init(timeInterval: 0.5, repeats: true) { [weak self] t in
             self?.checkEV()
         }
         RunLoop.main.add(exposureMeterTimer!, forMode: .common)
@@ -269,7 +274,9 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private func resetToDefault() {
         burstCount = 1
         shutterTimer = 0
-        exposureSetting = .init()
+        manualExposure = .default
+        exposureValue = .zero
+        programExposureShift = 0
     }
     
     func toggleFrontCamera() {
@@ -292,10 +299,22 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private func setExposure() async {
         switch exposureMode {
         case .auto:
-            await service.setExposureValue(exposureSetting.ev.floatValue)
+            await service.setExposureValue(exposureValue.floatValue)
         case .program, .manual:
-            let e = exposureSetting
-            await service.setCustomExposure(ev: e.ev.floatValue, shutterSpeed: e.ss.cmTime, iso: e.iso.floatValue)
+            let e = manualExposure
+            await service.setCustomExposure(ev: exposureValue.floatValue, shutterSpeed: e.ss.cmTime, iso: e.iso.floatValue)
+        }
+    }
+    
+    func resetExposure() {
+        switch exposureMode {
+        case .auto:
+            exposureValue = .zero
+        case .manual:
+            manualExposure = .default
+        case .program:
+            exposureValue = .zero
+            programExposureShift = 0
         }
     }
     
@@ -401,7 +420,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     // MARK: Program Exposure
     
-    func checkEV() {
+    private func checkEV() {
         guard let device = currentCamera?.device else {
             return
         }
@@ -411,21 +430,38 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         programExposure()
     }
     
-    func programExposure() {
+    func toggleProgramExposureMaunalShift() {
         guard exposureMode == .program else {
             return
         }
-//        // 负反馈异常处理
-//        guard customExposureOperating == false else {
-//            print("program Exposure", "abort")
-//            customExposureAbortTimes += 1
-//            if customExposureAbortTimes > 20 {
-//                customExposureAbortTimes = 0
-//                customExposureOperating = false
-//            }
-//            return
-//        }
+        let advice = programExposurePerfer(advices: programExposureAdvices, shift: programExposureShift)
+        manualExposure = advice
+        Task {
+            await MainActor.run {
+                pauseAutoExposure = true
+            }
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            await MainActor.run {
+                pauseAutoExposure = false
+            }
+        }
+    }
+    
+    private func programExposurePerfer(advices: [ExposureAdvice], shift: Int) -> ExposureAdvice {
+        let index = pickValueBetween(minVal: 0, maxVal: advices.count, input: advices.count / 2 + shift) { i, j in
+            return i < j
+        }
+        return advices[index]
+    }
+    
+    private func programExposure() {
         
+        guard !pauseAutoExposure else {
+            return
+        }
+        guard exposureMode == .program else {
+            return
+        }
         
         // 检查差了多少档曝光
         let currentEVOffset = currentExposureInfo.offset
@@ -445,16 +481,18 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
 //            print("program Exposure", "OK")
 //            return
 //        }
+        // TODO: ShutterSpeed ISOValue 不是严格的1/3档分布，慢快门时会导致反复横跳
         
         // 找出组合
         let allShutters = ShutterSpeed.presets.filter { ss in
             return ss.floatValue <= 0.11
         } // 太慢的不用
-        let allISOs = ISOValue.presets
+        let allISOs = ISOValue.presets.filter { ss in
+            return ss.floatValue <= 1000
+        } // 太快的不用
         
-        var m = exposureSetting
-        var indexShutter = allShutters.firstIndex(of: m.ss) ?? 0
-        var indexISO = allISOs.firstIndex(of: m.iso) ?? 0
+        var indexShutter = allShutters.firstIndex(of: manualExposure.ss) ?? 0
+        var indexISO = allISOs.firstIndex(of: manualExposure.iso) ?? 0
         
         while step > 0 {
             step -= 1
@@ -483,53 +521,13 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         indexISO -= minIndex
         indexShutter -= minIndex
         let maxLength = min(allISOs.count - indexISO, allShutters.count - indexShutter)
-        do {
-            // usable comp
-            let comp = (0..<maxLength).map { ind in
-                return (allShutters[indexShutter + ind], allISOs[indexISO + ind])
-            }
-            print("program Exposure", "components", comp)
+        programExposureAdvices = (0..<maxLength).map { ind in
+            return ExposureAdvice(ss: allShutters[indexShutter + ind], iso: allISOs[indexISO + ind])
         }
-        var indexOffset = maxLength / 2
-        do {
-            // 调快慢
-            indexOffset = pickValueBetween(minVal: 0, maxVal: maxLength - 1, input: indexOffset + m.faster) { i, j in
-                return i < j
-            }
-        }
+        print("program Exposure", "advices", programExposureAdvices)
         
-        indexISO += indexOffset
-        indexShutter += indexOffset
-        
-        m.ss = allShutters[indexShutter]
-        m.iso = allISOs[indexISO]
-        print("program Exposure", m)
-        exposureSetting = m
-        
-        /*
-         let speeds = ShutterSpeed.presets
-         var newSpeed: ShutterSpeed?
-         let isos = ISOValue.presets
-         var newISO: ISOValue?
-         
-         if val <= 110 {
-         print("program Exposure", "under exposure")
-         // under exposure
-         newSpeed = speeds.filter { s in
-         s < shutterSpeed
-         }.max()
-         } else if val >= 144 {
-         print("program Exposure", "under exposure")
-         // over exposure
-         newSpeed = speeds.filter { s in
-         s > shutterSpeed
-         }.min()
-         }
-         
-         if let newSpeed = newSpeed {
-         print("program Exposure", "new Speed", newSpeed)
-         shutterSpeed = newSpeed
-         }
-         */
+        let advice = programExposurePerfer(advices: programExposureAdvices, shift: programExposureShift)
+        print("program Exposure", "Selected", advice)
+        manualExposure = advice
     }
 }

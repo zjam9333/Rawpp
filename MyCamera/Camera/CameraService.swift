@@ -177,12 +177,16 @@ class CameraService {
         }
         do {
             try device.lockForConfiguration()
-            if device.isExposureModeSupported(.continuousAutoExposure) {
-                device.exposureMode = .continuousAutoExposure
-            } else if device.isExposureModeSupported(.autoExpose) {
-                device.exposureMode = .autoExpose
+            if device.exposureMode != .continuousAutoExposure && device.exposureMode != .autoExpose {
+                if device.isExposureModeSupported(.continuousAutoExposure) {
+                    device.exposureMode = .continuousAutoExposure
+                } else if device.isExposureModeSupported(.autoExpose) {
+                    device.exposureMode = .autoExpose
+                }
             }
-            await device.setExposureTargetBias(bias)
+            if device.exposureTargetBias != bias {
+                await device.setExposureTargetBias(bias)
+            }
             // 虽然custom，但是保持device.exposureMode = .autoExpose可以测光
             await device.setExposureModeCustom(duration: shutterSpeed, iso: iso)
             device.unlockForConfiguration()

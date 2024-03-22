@@ -46,8 +46,8 @@
             filePath = "MyCamera/Camera/CameraViewModel.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "409"
-            endingLineNumber = "409"
+            startingLineNumber = "428"
+            endingLineNumber = "428"
             landmarkName = "checkEV()"
             landmarkType = "7">
          </BreakpointContent>

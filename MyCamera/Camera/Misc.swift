@@ -111,7 +111,7 @@ struct ExposureValue: Equatable, Hashable, CustomStringConvertible {
     }()
     
     static let integers: Set<ExposureValue> = {
-        let floats: [ExposureValue] = (-5...5).map { r in
+        let floats: [ExposureValue] = (-3...3).map { r in
             return ExposureValue(rawValue: r * 100)
         }
         return Set(floats)
@@ -146,7 +146,6 @@ struct ISOValue: Equatable, Hashable, CustomStringConvertible {
     }
     
     static let iso400: ISOValue = .init(rawValue: 400)
-    static let iso100: ISOValue = .init(rawValue: 100)
     
     static let presets: [ISOValue] = {
         // step: 1/3 = 1.26
@@ -538,18 +537,6 @@ enum ThemeColor: UInt8 {
     return input
 }
 
-struct ExposureSetting {
-    var ss: ShutterSpeed = .percent100
-    var iso: ISOValue = .iso400
-    var ev: ExposureValue = .zero
-    var faster: Int = 0
-    
-    mutating func resetExceptMode() {
-        var new = ExposureSetting.init()
-        self = new
-    }
-}
-
 struct DeviceExposureInfo {
     
     static var unknown: DeviceExposureInfo {
@@ -582,4 +569,21 @@ struct DeviceExposureInfo {
 //    let ss: ShutterSpeed
 //    
 //    let iso: ISOValue
+}
+
+enum ProgramShift {
+    static var range: ClosedRange<Int> {
+        return -4...4
+    }
+}
+
+struct ExposureAdvice: CustomStringConvertible, Hashable {
+    static let `default` = ExposureAdvice(ss: .percent100, iso: .iso400)
+    
+    var ss: ShutterSpeed
+    var iso: ISOValue
+    
+    var description: String {
+        return "[\(ss),\(iso)]"
+    }
 }
