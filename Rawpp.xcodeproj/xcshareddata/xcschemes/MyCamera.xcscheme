@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "1CB4100F26F1FA7300D8E931"
-               BuildableName = "MyCamera.app"
-               BlueprintName = "MyCamera"
-               ReferencedContainer = "container:MyCamera.xcodeproj">
+               BuildableName = "Rawpp.app"
+               BlueprintName = "Rawpp"
+               ReferencedContainer = "container:Rawpp.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -44,9 +44,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "1CB4100F26F1FA7300D8E931"
-            BuildableName = "MyCamera.app"
-            BlueprintName = "MyCamera"
-            ReferencedContainer = "container:MyCamera.xcodeproj">
+            BuildableName = "Rawpp.app"
+            BlueprintName = "Rawpp"
+            ReferencedContainer = "container:Rawpp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>
@@ -67,9 +67,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "1CB4100F26F1FA7300D8E931"
-            BuildableName = "MyCamera.app"
-            BlueprintName = "MyCamera"
-            ReferencedContainer = "container:MyCamera.xcodeproj">
+            BuildableName = "Rawpp.app"
+            BlueprintName = "Rawpp"
+            ReferencedContainer = "container:Rawpp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

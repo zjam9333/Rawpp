@@ -46,7 +46,7 @@
 		1CA2B0302AB822B9004EA5D3 /* RAWCaptureDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAWCaptureDelegate.swift; sourceTree = "<group>"; };
 		1CAB29E22B2C255E00C7C884 /* BoundSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoundSlider.swift; sourceTree = "<group>"; };
 		1CAB29E42B2C340900C7C884 /* StepDragView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepDragView.swift; sourceTree = "<group>"; };
-		1CB4101026F1FA7300D8E931 /* MyCamera.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyCamera.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1CB4101026F1FA7300D8E931 /* Rawpp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rawpp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CB4101326F1FA7300D8E931 /* MyCameraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyCameraApp.swift; sourceTree = "<group>"; };
 		1CB4101726F1FA7500D8E931 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1CB4101A26F1FA7500D8E931 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -87,7 +87,7 @@
 		1CB4100726F1FA7300D8E931 = {
 			isa = PBXGroup;
 			children = (
-				1CB4101226F1FA7300D8E931 /* MyCamera */,
+				1CB4101226F1FA7300D8E931 /* Rawpp */,
 				1CF423D62B6F7D1D0055F869 /* Frameworks */,
 				1CB4101126F1FA7300D8E931 /* Products */,
 			);
@@ -96,12 +96,12 @@
 		1CB4101126F1FA7300D8E931 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				1CB4101026F1FA7300D8E931 /* MyCamera.app */,
+				1CB4101026F1FA7300D8E931 /* Rawpp.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		1CB4101226F1FA7300D8E931 /* MyCamera */ = {
+		1CB4101226F1FA7300D8E931 /* Rawpp */ = {
 			isa = PBXGroup;
 			children = (
 				1C28C4F72AD4E9B700D99C55 /* View */,
@@ -112,7 +112,7 @@
 				1CB4101C26F1FA7500D8E931 /* Info.plist */,
 				1CB4101926F1FA7500D8E931 /* Preview Content */,
 			);
-			path = MyCamera;
+			path = Rawpp;
 			sourceTree = "<group>";
 		};
 		1CB4101926F1FA7500D8E931 /* Preview Content */ = {
@@ -146,9 +146,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		1CB4100F26F1FA7300D8E931 /* MyCamera */ = {
+		1CB4100F26F1FA7300D8E931 /* Rawpp */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 1CB4101F26F1FA7500D8E931 /* Build configuration list for PBXNativeTarget "MyCamera" */;
+			buildConfigurationList = 1CB4101F26F1FA7500D8E931 /* Build configuration list for PBXNativeTarget "Rawpp" */;
 			buildPhases = (
 				1CB4100C26F1FA7300D8E931 /* Sources */,
 				1CB4100D26F1FA7300D8E931 /* Frameworks */,
@@ -159,9 +159,9 @@
 			);
 			dependencies = (
 			);
-			name = MyCamera;
+			name = Rawpp;
 			productName = MyCamera;
-			productReference = 1CB4101026F1FA7300D8E931 /* MyCamera.app */;
+			productReference = 1CB4101026F1FA7300D8E931 /* Rawpp.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -178,7 +178,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 1CB4100B26F1FA7300D8E931 /* Build configuration list for PBXProject "MyCamera" */;
+			buildConfigurationList = 1CB4100B26F1FA7300D8E931 /* Build configuration list for PBXProject "Rawpp" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -191,7 +191,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				1CB4100F26F1FA7300D8E931 /* MyCamera */,
+				1CB4100F26F1FA7300D8E931 /* Rawpp */,
 			);
 		};
 /* End PBXProject section */
@@ -359,8 +359,8 @@
 				DEVELOPMENT_TEAM = F928WG99XC;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = MyCamera/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Raw Camera";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";
+				INFOPLIST_KEY_CFBundleDisplayName = "Raw++";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -388,8 +388,8 @@
 				DEVELOPMENT_TEAM = F928WG99XC;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = MyCamera/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Raw Camera";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";
+				INFOPLIST_KEY_CFBundleDisplayName = "Raw++";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -409,7 +409,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		1CB4100B26F1FA7300D8E931 /* Build configuration list for PBXProject "MyCamera" */ = {
+		1CB4100B26F1FA7300D8E931 /* Build configuration list for PBXProject "Rawpp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				1CB4101D26F1FA7500D8E931 /* Debug */,
@@ -418,7 +418,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		1CB4101F26F1FA7500D8E931 /* Build configuration list for PBXNativeTarget "MyCamera" */ = {
+		1CB4101F26F1FA7500D8E931 /* Build configuration list for PBXNativeTarget "Rawpp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				1CB4102026F1FA7500D8E931 /* Debug */,
