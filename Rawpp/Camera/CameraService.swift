@@ -184,7 +184,7 @@ class CameraService {
                     device.exposureMode = .autoExpose
                 }
             }
-            if device.exposureTargetBias != bias {
+            if abs(device.exposureTargetBias - bias) > 0.01 {
                 await device.setExposureTargetBias(bias)
             }
             // 虽然custom，但是保持device.exposureMode = .autoExpose可以测光

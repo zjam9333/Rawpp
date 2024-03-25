@@ -36,9 +36,18 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var burstCount: Int = 1
     @Published private(set) var burstObject: BurstObject? = nil
     
-    @Published var exposureMode = ExposureMode.program
-    @Published var exposureValue = ExposureValue.zero
-    @Published var programExposureShift: Int = 0
+    @Published var exposureMode = MappedCustomizeValue(name: "CustomizeValue_exposureMode", default: ExposureMode.program) { m in
+        return m.rawValue
+    } get: { rawValue in
+        return ExposureMode(rawValue: rawValue) ?? .program
+    }
+
+    @Published var exposureValue = MappedCustomizeValue(name: "CustomizeValue_exposureValue", default: ExposureValue.zero) { m in
+        return m.rawValue
+    } get: { rawValue in
+        return ExposureValue(rawValue: rawValue)
+    }
+    @Published var programExposureShift = CustomizeValue<Int>(name: "CustomizeValue_programExposureShift", default: 0)
     
     @Published private(set) var currentExposureInfo: DeviceExposureInfo = .unknown
     @Published var manualExposure: ExposureAdvice = .default
@@ -55,7 +64,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var showingEVIndicators = false
     @Published var isAppInBackground = false
     
-    @Published var cropFactor: CustomizeValue<CGFloat> = .init(name: "CustomizeValue_cropFactor", default: 1, minValue: 1, maxValue: 2)
+    @Published var cropFactor = CustomizeValue<CGFloat>(name: "CustomizeValue_cropFactor", default: 1, minValue: 1, maxValue: 2)
     
     private let feedbackGenerator = UISelectionFeedbackGenerator()
     
@@ -274,9 +283,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private func resetToDefault() {
         burstCount = 1
         shutterTimer = 0
-        manualExposure = .default
-        exposureValue = .zero
-        programExposureShift = 0
     }
     
     func toggleFrontCamera() {
@@ -297,24 +303,39 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     private func setExposure() async {
-        switch exposureMode {
+        let e = manualExposure
+        switch exposureMode.value {
         case .auto:
-            await service.setExposureValue(exposureValue.floatValue)
-        case .program, .manual:
-            let e = manualExposure
-            await service.setCustomExposure(ev: exposureValue.floatValue, shutterSpeed: e.ss.cmTime, iso: e.iso.floatValue)
+            await service.setExposureValue(exposureValue.value.floatValue)
+        case .manual:
+            await service.setCustomExposure(ev: 0, shutterSpeed: e.ss.cmTime, iso: e.iso.floatValue)
+        case .program:
+            await service.setCustomExposure(ev: exposureValue.value.floatValue, shutterSpeed: e.ss.cmTime, iso: e.iso.floatValue)
         }
     }
     
     func resetExposure() {
-        switch exposureMode {
+        switch exposureMode.value {
         case .auto:
-            exposureValue = .zero
+            exposureValue.value = .zero
         case .manual:
             manualExposure = .default
         case .program:
-            exposureValue = .zero
-            programExposureShift = 0
+            exposureValue.value = .zero
+            programExposureShift.value = 0
+        }
+    }
+    
+    // MARK: TOGGLE
+    
+    func toggleExposureMode() {
+        switch exposureMode.value {
+        case .auto:
+            exposureMode.value = .manual
+        case .manual:
+            exposureMode.value = .program
+        case .program:
+            exposureMode.value = .auto
         }
     }
     
@@ -431,10 +452,10 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     func toggleProgramExposureMaunalShift() {
-        guard exposureMode == .program else {
+        guard exposureMode.value == .program else {
             return
         }
-        let advice = programExposurePerfer(advices: programExposureAdvices, shift: programExposureShift)
+        let advice = programExposurePerfer(advices: programExposureAdvices, shift: programExposureShift.value)
         manualExposure = advice
         Task {
             await MainActor.run {
@@ -448,7 +469,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     private func programExposurePerfer(advices: [ExposureAdvice], shift: Int) -> ExposureAdvice {
-        let index = pickValueBetween(minVal: 0, maxVal: advices.count, input: advices.count / 2 + shift) { i, j in
+        let index = pickValueBetween(minVal: 0, maxVal: advices.count - 1, input: advices.count / 2 + shift) { i, j in
             return i < j
         }
         return advices[index]
@@ -459,7 +480,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         guard !pauseAutoExposure else {
             return
         }
-        guard exposureMode == .program else {
+        guard exposureMode.value == .program else {
             return
         }
         
@@ -526,7 +547,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         print("program Exposure", "advices", programExposureAdvices)
         
-        let advice = programExposurePerfer(advices: programExposureAdvices, shift: programExposureShift)
+        let advice = programExposurePerfer(advices: programExposureAdvices, shift: programExposureShift.value)
         print("program Exposure", "Selected", advice)
         manualExposure = advice
     }

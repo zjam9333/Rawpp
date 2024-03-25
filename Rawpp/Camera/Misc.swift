@@ -71,25 +71,21 @@ struct AlertError {
     }
 }
 
-enum ExposureMode {
-    case auto
-    case manual
-    case program
+enum ExposureMode: UInt8 {
+    case auto = 0
+    case manual = 1
+    case program = 2
 }
 
-struct ExposureValue: Equatable, Hashable, CustomStringConvertible {
-    private let rawValue: Int
+struct ExposureValue: Equatable, Hashable {
+    let rawValue: Int
     
     var floatValue: Float {
-        return Float(rawValue) / 100
+        return Float(rawValue) / 1000
     }
     
     var description: String {
         return "\(floatValue)"
-    }
-    
-    var text: String {
-        return String(format: "%.1f", rawValue)
     }
     
     static let zero = ExposureValue(rawValue: 0)
@@ -103,8 +99,8 @@ struct ExposureValue: Equatable, Hashable, CustomStringConvertible {
         for f in ints {
             steps.append(f)
             if f != max {
-                steps.append(.init(rawValue: f.rawValue + 33))
-                steps.append(.init(rawValue: f.rawValue + 66))
+                steps.append(.init(rawValue: f.rawValue + 333))
+                steps.append(.init(rawValue: f.rawValue + 666))
             }
         }
         return steps
@@ -112,7 +108,7 @@ struct ExposureValue: Equatable, Hashable, CustomStringConvertible {
     
     static let integers: Set<ExposureValue> = {
         let floats: [ExposureValue] = (-3...3).map { r in
-            return ExposureValue(rawValue: r * 100)
+            return ExposureValue(rawValue: r * 1000)
         }
         return Set(floats)
     }()
@@ -137,8 +133,36 @@ struct RAWSaveOption: OptionSet {
 struct ISOValue: Equatable, Hashable, CustomStringConvertible {
     private let rawValue: Int
     
+    static let keyValues: [Int: Float] = [
+        25: 25,
+        30: 31.50,
+        40: 39.68,
+        
+        50: 50,
+        64: 63,
+        80: 79.38,
+        
+        100: 100,
+        125: 126, 
+        160: 158.76,
+        
+        200: 200,
+        250: 252,
+        320: 317.52,
+        
+        400: 400,
+        500: 504,
+        640: 635.05,
+        
+        800: 800,
+        1000: 1008,
+        1280: 1270.08,
+        
+        1600: 1600,
+    ]
+    
     var floatValue: Float {
-        return Float(rawValue)
+        return Self.keyValues[rawValue] ?? Float(rawValue)
     }
     
     var description: String {
@@ -182,8 +206,58 @@ struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible {
         self.rawValue = rawValue
     }
     
+    static let keyValues: [UInt: Float] = [
+        3: 3.125,
+        4: 3.94,
+        5: 4.96,
+        
+        6: 6.25,
+        8: 7.87,
+        10: 9.92,
+        
+        12: 12.5,
+        15: 15.75,
+        20: 19.84,
+        
+        25: 25,
+        30: 31.50,
+        40: 39.68,
+        
+        50: 50,
+        64: 63,
+        80: 79.38,
+        
+        100: 100,
+        125: 126,
+        160: 158.76,
+        
+        200: 200,
+        250: 252,
+        320: 317.52,
+        
+        400: 400,
+        500: 504,
+        640: 635.05,
+        
+        800: 800,
+        1000: 1008,
+        1280: 1270.08,
+        
+        1600: 1600,
+        2000: 2016,
+        2500: 2540.16,
+        
+        3200: 3200,
+        4000: 4032,
+        5000: 5080.32,
+        
+        6400: 6400,
+        8000: 8064,
+    ]
+    
     var floatValue: Float {
-        return 1 / Float(rawValue)
+        let f = Self.keyValues[rawValue] ?? Float(rawValue)
+        return 1 / f
     }
     
     var description: String {
@@ -210,7 +284,8 @@ struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible {
             400, 500, 640,
             800, 1000, 1280,
             1600, 2000, 2500,
-            3200, 4000, 8000,
+            3200, 4000, 5000,
+            6400, 8000,
         ]
         let pres = ints.map { t in
             return ShutterSpeed(rawValue: t)
@@ -255,6 +330,10 @@ protocol CustomizeBasicValue: Equatable {
 }
 
 extension Float: CustomizeBasicValue {
+    
+}
+
+extension Int: CustomizeBasicValue {
     
 }
 
