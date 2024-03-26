@@ -362,33 +362,9 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     // MARK: Device Orientation
     
-#if targetEnvironment(simulator)
-    private var timer: Timer?
-#endif
-    
     private let motionManager = CMMotionManager()
     
     private func setupMotion() {
-#if targetEnvironment(simulator)
-        timer = Timer(timeInterval: 1, repeats: true) { [weak self] t in
-            let uiori = UIDevice.current.orientation
-            switch uiori {
-            case .portrait:
-                self?.videoOrientation = .portrait
-            case .portraitUpsideDown:
-                self?.videoOrientation = .portraitUpsideDown
-                // 左右反的？
-            case .landscapeLeft:
-                self?.videoOrientation = .landscapeRight
-            case .landscapeRight:
-                self?.videoOrientation = .landscapeLeft
-            default:
-                break
-            }
-        }
-        RunLoop.main.add(timer!, forMode: .common)
-#endif
-        
         startAcc()
     }
     
@@ -445,17 +421,27 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         guard let device = currentCamera?.device else {
             return
         }
-        let info = DeviceExposureInfo(duration: device.exposureDuration, iso: device.iso, evOffset: device.exposureTargetOffset)
-        print("current DeviceExposureInfo", info)
-        currentExposureInfo = info
-        programExposure()
+        // 仅用于展示
+        switch exposureMode.value {
+        case .manual:
+            // 设置了0，相对于0
+            currentExposureInfo = DeviceExposureInfo(evOffset: device.exposureTargetOffset, bia: 0)
+        default:
+            // 相对于exposureValue
+            currentExposureInfo = DeviceExposureInfo(evOffset: device.exposureTargetOffset, bia: exposureValue.value.floatValue)
+        }
+        
+        let offsetForZero = DeviceExposureInfo(evOffset: device.exposureTargetOffset, bia: 0).offset
+        programExposure(currentEVOffset: offsetForZero)
     }
     
     func toggleProgramExposureMaunalShift() {
         guard exposureMode.value == .program else {
             return
         }
-        let advice = programExposurePerfer(advices: programExposureAdvices, shift: programExposureShift.value)
+        guard let advice = programExposurePerfer(advices: programExposureAdvices, shift: programExposureShift.value) else {
+            return
+        }
         manualExposure = advice
         Task {
             await MainActor.run {
@@ -468,14 +454,18 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
     
-    private func programExposurePerfer(advices: [ExposureAdvice], shift: Int) -> ExposureAdvice {
+    private func programExposurePerfer(advices: [ExposureAdvice], shift: Int) -> ExposureAdvice? {
         let index = pickValueBetween(minVal: 0, maxVal: advices.count - 1, input: advices.count / 2 + shift) { i, j in
             return i < j
+        }
+        guard advices.indices.contains(index) else {
+            // 什么情况会没有建议参数？
+            return nil
         }
         return advices[index]
     }
     
-    private func programExposure() {
+    private func programExposure(currentEVOffset: ExposureValue) {
         
         guard !pauseAutoExposure else {
             return
@@ -485,11 +475,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         
         // 检查差了多少档曝光
-        let currentEVOffset = currentExposureInfo.offset
-//        guard currentEVOffset != .zero else {
-//            print("program Exposure", "OK")
-//            return
-//        }
         
         let isOverExposure = currentEVOffset.floatValue > 0
         
@@ -498,18 +483,14 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         
         var step: Int = abs(currentIndex - zeroIndex)
-//        guard step > 1 else {
-//            print("program Exposure", "OK")
-//            return
-//        }
-        // TODO: ShutterSpeed ISOValue 不是严格的1/3档分布，慢快门时会导致反复横跳
         
         // 找出组合
         let allShutters = ShutterSpeed.presets.filter { ss in
             return ss.floatValue <= 0.11
         } // 太慢的不用
         let allISOs = ISOValue.presets.filter { ss in
-            return ss.floatValue <= 1000
+//            return ss.floatValue <= 1000
+            return true
         } // 太快的不用
         
         var indexShutter = allShutters.firstIndex(of: manualExposure.ss) ?? 0
@@ -547,7 +528,9 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         print("program Exposure", "advices", programExposureAdvices)
         
-        let advice = programExposurePerfer(advices: programExposureAdvices, shift: programExposureShift.value)
+        guard let advice = programExposurePerfer(advices: programExposureAdvices, shift: programExposureShift.value) else {
+            return
+        }
         print("program Exposure", "Selected", advice)
         manualExposure = advice
     }

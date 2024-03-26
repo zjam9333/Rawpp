@@ -85,10 +85,9 @@ struct CameraView: View {
                 viewModel.switchFlash()
             } label: {
                 Image(systemName: viewModel.isFlashOn ? "bolt.fill" : "bolt.slash.fill")
-                    .font(.system(size: 20))
+                    .foregroundStyle(viewModel.isFlashOn ? ThemeColor.highlightedYellow : ThemeColor.foreground)
+                    .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             }
-            .accentColor(viewModel.isFlashOn ? ThemeColor.highlightedYellow : ThemeColor.foreground)
-            .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             
             Button {
                 viewModel.touchFeedback()
@@ -97,18 +96,18 @@ struct CameraView: View {
                 let t = Int(viewModel.shutterTimer)
                 let hi = t > 1
                 Image(systemName: "timer")
-                    .font(.system(size: 20))
-                    .accentColor(hi ? ThemeColor.highlightedYellow : ThemeColor.foreground)
+                    .foregroundStyle(hi ? ThemeColor.highlightedYellow : ThemeColor.foreground)
                     .overlay {
                         if hi {
                             Text("\(t)")
-                                .font(.system(size: 12))
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(ThemeColor.highlightedYellow)
                                 .padding(.horizontal, 2)
                                 .background(ThemeColor.background)
                                 .offset(x: 10, y: -10)
                         }
                     }
+                    .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             }
             
             Button {
@@ -117,102 +116,44 @@ struct CameraView: View {
             } label: {
                 let t = Int(viewModel.burstCount)
                 let hi = t > 1
-                Image(systemName: "repeat")
-                    .font(.system(size: 20))
-                    .accentColor(hi ? ThemeColor.highlightedYellow : ThemeColor.foreground)
+                Image(systemName: "square.stack.3d.down.right")
+                    .foregroundStyle(hi ? ThemeColor.highlightedYellow : ThemeColor.foreground)
                     .overlay {
                         if hi {
                             Text("\(t)")
-                                .font(.system(size: 12))
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(ThemeColor.highlightedYellow)
                                 .padding(.horizontal, 2)
                                 .background(ThemeColor.background)
                                 .offset(x: 10, y: -10)
                         }
                     }
+                    .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
+            }
+            
+            Button {
+                viewModel.touchFeedback()
+                viewModel.toggleFrontCamera()
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath.camera")
+                    .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             }
             
             Spacer()
             
-            rawOptionView
-            
             Button {
                 viewModel.touchFeedback()
-                viewModel.toggleExposureMode()
+                viewModel.showSetting = true
             } label: {
-                Group {
-                    switch viewModel.exposureMode.value {
-                    case .auto:
-                        Text("AUTO")
-                            .foregroundStyle(ThemeColor.highlightedGreen)
-                    case .program:
-                        Text("PROG")
-                            .foregroundStyle(ThemeColor.highlightedGreen)
-                    case .manual:
-                        Text("MANU")
-                            .foregroundStyle(ThemeColor.highlightedRed)
-                    }
-                }
-                .font(.system(size: 12))
-                .padding(5)
-                .frame(height: 24)
-                .border(ThemeColor.foreground, width: 1)
+                Image(systemName: "gear")
+                    .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
             }
         }
-        .frame(height: 44)
+        .frame(height: 60)
         .padding(.horizontal, 20)
         .background()
-    }
-    
-    @ViewBuilder private var rawOptionView: some View {
-        HStack(spacing: 10) {
-            Button {
-                viewModel.touchFeedback()
-                if viewModel.rawOption.value.contains(.apple) {
-                    viewModel.rawOption.value.remove(.apple)
-                } else {
-                    viewModel.rawOption.value.insert(.apple)
-                }
-            } label: {
-                Text("APPLE")
-                    .font(.system(size: 12))
-                    .foregroundStyle(ThemeColor.foreground)
-                    .strikethrough(viewModel.rawOption.value.contains(.apple) == false, color: ThemeColor.highlightedYellow)
-                    .padding(.vertical, 5)
-                    .frame(height: 24)
-            }
-            
-            Button {
-                viewModel.touchFeedback()
-                switch viewModel.rawOption.value {
-                case .heif:
-                    viewModel.rawOption.value = .raw
-                case .raw:
-                    viewModel.rawOption.value = [.raw, .heif]
-                default:
-                    viewModel.rawOption.value = .heif
-                }
-            } label: {
-                var title: String {
-                    if viewModel.rawOption.value.contains([.heif, .raw]) {
-                        return "R+H"
-                    } else if viewModel.rawOption.value.contains(.raw) {
-                        return "RAW"
-                    } else if viewModel.rawOption.value.contains(.heif) {
-                        return "HEIF"
-                    }
-                    return ""
-                }
-                Text(title)
-                    .font(.system(size: 12))
-                    .foregroundStyle(ThemeColor.foreground)
-                    .strikethrough(viewModel.rawOption.value.contains(.apple), color: ThemeColor.highlightedYellow)
-                    .padding(.vertical, 5)
-                    .frame(height: 24)
-            }
-        }
-        .padding(.horizontal, 5)
-        .border(ThemeColor.foreground, width: 1)
+        .foregroundStyle(ThemeColor.foreground)
+        .font(.system(size: 20, weight: .semibold))
     }
     
     @ViewBuilder private var centerPreview: some View {
@@ -250,28 +191,25 @@ struct CameraView: View {
                             valuesIndicator(currentValue: viewModel.exposureValue.value, values: ExposureValue.presets) { va in
                                 return ExposureValue.integers.contains(va)
                             }
-                            Text(String(format: "EV %.1f", viewModel.exposureValue.value.floatValue))
-                                .font(.system(size: 24))
+                            
+                            largeInfoText(title: "ev", value: String(format: "%.1f", viewModel.exposureValue.value.floatValue))
                                 .foregroundStyle(.white)
                         case .program:
                             HStack(alignment: .bottom) {
                                 VStack {
-                                    Text("ISO \(viewModel.manualExposure.iso.description)")
-                                        .font(.system(size: 24))
+                                    largeInfoText(title: "iso", value: viewModel.manualExposure.iso.description)
                                         .foregroundStyle(.white)
                                     valuesIndicator(currentValue: viewModel.manualExposure, values: viewModel.programExposureAdvices) { va in
                                         return false
                                     }
-                                    Text("SS \(viewModel.manualExposure.ss.description)")
-                                        .font(.system(size: 24))
+                                    largeInfoText(title: "ss", value: viewModel.manualExposure.ss.description)
                                         .foregroundStyle(.white)
                                 }
                                 VStack {
                                     valuesIndicator(currentValue: viewModel.exposureValue.value, values: ExposureValue.presets) { va in
                                         return ExposureValue.integers.contains(va)
                                     }
-                                    Text(String(format: "EV %.1f", viewModel.exposureValue.value.floatValue))
-                                        .font(.system(size: 24))
+                                    largeInfoText(title: "ev", value: String(format: "%.1f", viewModel.exposureValue.value.floatValue))
                                         .foregroundStyle(.white)
                                 }
                             }
@@ -281,8 +219,7 @@ struct CameraView: View {
                                     valuesIndicator(currentValue: viewModel.manualExposure.iso, values: ISOValue.presets) { va in
                                         return ISOValue.integers.contains(va)
                                     }
-                                    Text("ISO \(viewModel.manualExposure.iso.description)")
-                                        .font(.system(size: 24))
+                                    largeInfoText(title: "iso", value: viewModel.manualExposure.iso.description)
                                         .foregroundStyle(.white)
                                 }
                                 
@@ -290,8 +227,7 @@ struct CameraView: View {
                                     valuesIndicator(currentValue: viewModel.manualExposure.ss, values: ShutterSpeed.presets) { va in
                                         return ShutterSpeed.integers.contains(va)
                                     }
-                                    Text("SS \(viewModel.manualExposure.ss.description)")
-                                        .font(.system(size: 24))
+                                    largeInfoText(title: "ss", value: viewModel.manualExposure.ss.description)
                                         .foregroundStyle(.white)
                                 }
                             }
@@ -320,51 +256,45 @@ struct CameraView: View {
     
     
     @ViewBuilder private var exposureInfo: some View {
-        Button {
-            viewModel.showSetting = true
-        } label: {
-            HStack(alignment: .top, spacing: 8) {
-                switch viewModel.exposureMode.value {
-                case .auto:
-                    valuesIndicator(currentValue: viewModel.currentExposureInfo.offset, center: .zero, preferValue: viewModel.exposureValue.value, values: ExposureValue.presets) { va in
-                        return ExposureValue.integers.contains(va)
-                    }
-                case .manual:
-                    Text("ISO \(viewModel.manualExposure.iso.description)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(ThemeColor.highlightedRed)
-                    Text("SS \(viewModel.manualExposure.ss.description)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(ThemeColor.highlightedRed)
-                    valuesIndicator(currentValue: viewModel.currentExposureInfo.offset, center: .zero, preferValue: viewModel.exposureValue.value, values: ExposureValue.presets) { va in
-                        return ExposureValue.integers.contains(va)
-                    }
-                case .program:
-                    Text("ISO \(viewModel.manualExposure.iso.description)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(ThemeColor.highlightedGreen)
-                    Text("SS \(viewModel.manualExposure.ss.description)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(ThemeColor.highlightedGreen)
+        HStack(alignment: .top, spacing: 8) {
+            switch viewModel.exposureMode.value {
+            case .auto:
+                valuesIndicator(currentValue: viewModel.currentExposureInfo.offset, preferValue: viewModel.exposureValue.value, values: ExposureValue.presets) { va in
+                    return ExposureValue.integers.contains(va)
+                }
+            case .manual:
+                Group {
+                    smallInfoText(title: "iso", value: viewModel.manualExposure.iso.description)
+                    smallInfoText(title: "ss", value: viewModel.manualExposure.ss.description)
+                }
+                .foregroundStyle(ThemeColor.highlightedRed)
+                
+                valuesIndicator(currentValue: viewModel.currentExposureInfo.offset, preferValue: ExposureValue.zero, values: ExposureValue.presets) { va in
+                    return ExposureValue.integers.contains(va)
+                }
+            case .program:
+                Group {
+                    smallInfoText(title: "iso", value: viewModel.manualExposure.iso.description)
+                    smallInfoText(title: "ss", value: viewModel.manualExposure.ss.description)
                     if viewModel.programExposureShift.value != 0 {
                         Text(viewModel.programExposureShift.value < 0 ? "←" : "→")
-                            .font(.system(size: 12))
-                            .foregroundStyle(ThemeColor.highlightedGreen)
-                    }
-                    valuesIndicator(currentValue: viewModel.currentExposureInfo.offset, center: .zero, preferValue: viewModel.exposureValue.value, values: ExposureValue.presets) { va in
-                        return ExposureValue.integers.contains(va)
+                            .font(.system(size: 12, weight: .semibold))
                     }
                 }
-                Text("\(sharedPropertyies.output.maxMegaPixel.value.rawValue)MP")
-                    .font(.system(size: 12))
-                    .foregroundStyle(ThemeColor.highlightedYellow)
+                .foregroundStyle(ThemeColor.highlightedYellow)
+                
+                valuesIndicator(currentValue: viewModel.currentExposureInfo.offset, preferValue: viewModel.exposureValue.value, values: ExposureValue.presets) { va in
+                    return ExposureValue.integers.contains(va)
+                }
             }
-            .padding(6)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(.black.opacity(0.5))
-            )
+            smallInfoText(title: "\(sharedPropertyies.output.maxMegaPixel.value.rawValue)", value: "mp", smallFirst: false)
+                .foregroundStyle(ThemeColor.highlightedYellow)
         }
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(.black.opacity(0.5))
+        )
         .padding()
     }
     
@@ -380,7 +310,7 @@ struct CameraView: View {
                         .frame(width: i.isSelected ? 40 : 36, height: 30, alignment: .center)
                         .overlay {
                             Text(i.title)
-                                .font(.system(size: 12))
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(.white)
                             if i.isMain {
                                 ThemeColor.highlightedYellow.frame(width: 10, height: 1).offset(y: 8)
@@ -430,7 +360,7 @@ struct CameraView: View {
                         }.overlay(alignment: .bottomLeading) {
                             if isGroup {
                                 Text("\(photo.count)")
-                                    .font(.system(size: 12))
+                                    .font(.system(size: 12, weight: .semibold))
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 6)
                                     .background {
@@ -455,11 +385,11 @@ struct CameraView: View {
                 let seconds = Int(timer.value) + 1
                 Text("\(seconds)")
                     .foregroundStyle(.foreground)
-                    .font(.system(size: 72))
+                    .font(.system(size: 72, weight: .semibold))
             } else if let burst = viewModel.burstObject {
                 Text("\(burst.current)/\(burst.total)")
                     .foregroundStyle(.foreground)
-                    .font(.system(size: 72))
+                    .font(.system(size: 72, weight: .semibold))
             } else {
                 Button {
                     viewModel.touchFeedback()
@@ -468,65 +398,124 @@ struct CameraView: View {
                     let buttonSiz: CGFloat = 74
                     let circleSiz = buttonSiz - 36
                     Circle()
-                        .stroke(viewModel.isCapturing ? .gray : ThemeColor.foreground, lineWidth: 1)
+                        .stroke(viewModel.isCapturing ? .gray : ThemeColor.foreground, lineWidth: 2)
                         .frame(width: buttonSiz, height: buttonSiz, alignment: .center)
                         .overlay(alignment: .center) {
                             Circle()
-                                .stroke(ThemeColor.foreground, lineWidth: 1)
+                                .stroke(ThemeColor.foreground, lineWidth: 2)
                                 .frame(width: circleSiz, height: circleSiz, alignment: .center)
                         }
                 }
             }
         }
         .overlay(alignment: .trailing) {
-            Button {
-                viewModel.touchFeedback()
-                viewModel.toggleFrontCamera()
-            } label: {
-                Image(systemName: "arrow.triangle.2.circlepath.camera")
-                    .font(.system(size: 30, weight: .thin))
-                    .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
+            
+            VStack(alignment: .trailing) {
+                let isApple = viewModel.rawOption.value.contains(.apple)
+                HStack(spacing: 10) {
+                    Button {
+                        viewModel.touchFeedback()
+                        if viewModel.rawOption.value.contains(.apple) {
+                            viewModel.rawOption.value.remove(.apple)
+                        } else {
+                            viewModel.rawOption.value.insert(.apple)
+                        }
+                    } label: {
+                        Text("System")
+                            .underline(isApple)
+                            .padding(.vertical, 5)
+                    }
+                    
+                    Button {
+                        viewModel.touchFeedback()
+                        switch viewModel.rawOption.value {
+                        case .heif:
+                            viewModel.rawOption.value = .raw
+                        case .raw:
+                            viewModel.rawOption.value = [.raw, .heif]
+                        default:
+                            viewModel.rawOption.value = .heif
+                        }
+                    } label: {
+                        var title: String {
+                            if viewModel.rawOption.value.contains([.heif, .raw]) {
+                                return "R+H"
+                            } else if viewModel.rawOption.value.contains(.raw) {
+                                return "RAW"
+                            } else if viewModel.rawOption.value.contains(.heif) {
+                                return "HEIF"
+                            }
+                            return ""
+                        }
+                        Text(title)
+                            .underline(!isApple)
+                            .padding(.vertical, 5)
+                    }
+                }
+                .foregroundStyle(ThemeColor.foreground)
+                
+                Button {
+                    viewModel.touchFeedback()
+                    viewModel.toggleExposureMode()
+                } label: {
+                    Group {
+                        switch viewModel.exposureMode.value {
+                        case .auto:
+                            Text("AUTO")
+                                .foregroundStyle(ThemeColor.highlightedGreen)
+                        case .program:
+                            Text("PROGRAM")
+                                .foregroundStyle(ThemeColor.highlightedYellow)
+                        case .manual:
+                            Text("MANUAL")
+                                .foregroundStyle(ThemeColor.highlightedRed)
+                        }
+                    }
+                    .padding(.vertical, 5)
+                    .frame(height: 24)
+                }
             }
-            .accentColor(ThemeColor.foreground)
         }
         .padding(.horizontal, 20)
+        .font(.system(size: 12, weight: .semibold))
         .background()
     }
     
-    @ViewBuilder func valuesIndicator<Element>(currentValue: Element, center: Element? = nil, preferValue: Element? = nil, values: [Element], isInteger: @escaping (Element) -> Bool) -> some View where Element: Hashable {
+    @ViewBuilder func largeInfoText(title: String, value: String) -> some View {
+        HStack(alignment: .bottom, spacing: 4) {
+            Text(title)
+                .font(.system(size: 20, weight: .semibold))
+            Text(value)
+                .font(.system(size: 24, weight: .semibold))
+        }
+    }
+    
+    @ViewBuilder func smallInfoText(title: String, value: String, smallFirst: Bool = true) -> some View {
+        HStack(alignment: .bottom, spacing: 2) {
+            Text(title)
+                .font(.system(size: smallFirst ? 10 : 12, weight: .semibold))
+            Text(value)
+                .font(.system(size: smallFirst ? 12 : 10, weight: .semibold))
+        }
+    }
+    
+    @ViewBuilder func valuesIndicator<Element>(currentValue: Element, preferValue: Element? = nil, values: [Element], isInteger: @escaping (Element) -> Bool) -> some View where Element: Hashable {
         HStack(alignment: .bottom, spacing: 2) {
             ForEach(values, id: \.self) { ev in
-                let isSelected = currentValue == ev
                 Color.clear
-                    .frame(width: isSelected ? 2 : 1, height: 12)
+                    .frame(width: 1, height: 12)
                     .overlay(alignment: .bottom) {
                         Rectangle()
-                            .fill(isSelected ? ThemeColor.highlightedRed : Color.white)
+                            .fill(preferValue == ev ? ThemeColor.highlightedRed : Color.white)
                             .frame(height: isInteger(ev) ? 12 : 8)
                     }
-                    .overlay(alignment: .top) {
-                        if isSelected {
+                    .overlay(alignment: .bottom) {
+                        if ev == currentValue {
                             Image(systemName: "triangle.fill")
                                 .resizable()
-                                .rotationEffect(.degrees(180))
-                                .accentColor(ThemeColor.highlightedRed)
+                                .foregroundStyle(ThemeColor.highlightedYellow)
                                 .frame(width: 4, height: 4)
-                                .offset(y: -8)
-                        }
-                        if ev == center {
-                            Image(systemName: "triangle.fill")
-                                .resizable()
-                                .rotationEffect(.degrees(180))
-                                .accentColor(ThemeColor.highlightedGreen)
-                                .frame(width: 4, height: 4)
-                                .offset(y: -8)
-                        }
-                        if ev == preferValue {
-                            Image(systemName: "triangle.fill")
-                                .resizable()
-                                .accentColor(ThemeColor.highlightedYellow)
-                                .frame(width: 4, height: 4)
-                                .offset(y: 12)
+                                .offset(y: 6)
                         }
                     }
             }
@@ -629,9 +618,6 @@ struct LoadingView: UIViewRepresentable {
 struct CameraViewPreview: PreviewProvider {
     static var previews: some View {
         return CameraView()
-            .ignoresSafeArea()
-            .border(ThemeColor.highlightedRed, width: 1)
-            .background(.black)
     }
 }
 

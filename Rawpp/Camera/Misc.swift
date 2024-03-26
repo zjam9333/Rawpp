@@ -619,22 +619,11 @@ enum ThemeColor: UInt8 {
 struct DeviceExposureInfo {
     
     static var unknown: DeviceExposureInfo {
-        return .init(duration: ShutterSpeed.percent100.cmTime, iso: ISOValue.iso400.floatValue, evOffset: 0)
+        return .init(evOffset: 0, bia: 0)
     }
     
-    init(duration: CMTime, iso: Float, evOffset: Float) {
-        // 比例有问题啊。。不像ev直接算出来
-//        self.ss = ShutterSpeed.presets.min { e1, e2 in
-//            let d1 = e1.cmTime.seconds - duration.seconds
-//            let d2 = e1.cmTime.seconds - duration.seconds
-//            return abs(d1) < abs(d2)
-//        } ?? .percent100
-//        
-//        self.iso = ISOValue.presets.min { e1, e2 in
-//            let d1 = e1.floatValue - iso
-//            let d2 = e2.floatValue - iso
-//            return abs(d1) < abs(d2)
-//        } ?? .iso400
+    init(evOffset: Float, bia: Float) {
+        let evOffset = evOffset + bia
         
         self.offset = ExposureValue.presets.min { e1, e2 in
             let d1 = e1.floatValue - evOffset
