@@ -39,7 +39,7 @@ class CameraService {
         }
     }
     
-    @Published var allCameras: [AVCaptureDevice.Position: [CameraDevice]] = [:]
+    var allCameras: [AVCaptureDevice.Position: [CameraDevice]] = [:]
     
     @Published var currentCamera: CameraDevice?
     

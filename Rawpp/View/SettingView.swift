@@ -21,34 +21,60 @@ struct SettingView: View {
             List {
                 Section("Output") {
                     sliderCell(title: "Heif Quality", property: $sharedPropertyies.output.heifLossyCompressionQuality)
-                    megaPixelPickerCell(title: "Max Mega Pixel")
+                    megaPixelPickerCell()
                 }
                 
-                Section("Raw Filter") {
-                    sliderCell(title: "Boost", property: $sharedPropertyies.raw.boostAmount)
+                Section("Format") {
+                    let currentSaveOption = sharedPropertyies.raw.rawOption.value
+                    clickCell(title: "APPLE Style", isSelected: currentSaveOption.contains(.apple)) {
+                        sharedPropertyies.raw.rawOption.value.insert(.apple)
+                    }
+                    
+                    let allSaveOptions: [RAWSaveOption] = [
+                        .heif,
+                        .raw,
+                        [.heif, .raw],
+                    ]
+                    
+                    ForEach(allSaveOptions, id: \.rawValue) { the in
+                        var title: String {
+                            if the.contains([.heif, .raw]) {
+                                return "RAW + HEIF"
+                            } else if the.contains(.raw) {
+                                return "RAW"
+                            } else if the.contains(.heif) {
+                                return "HEIF"
+                            }
+                            return ""
+                        }
+                        var isSelected: Bool {
+                            if currentSaveOption.contains(.apple) {
+                                return false
+                            }
+                            return currentSaveOption == the
+                        }
+                        clickCell(title: title, isSelected: isSelected) {
+                            sharedPropertyies.raw.rawOption.value = the
+                        }
+                    }
+                }
+                
+                if !sharedPropertyies.raw.rawOption.value.contains(.apple) {
+                    Section("Raw Filter") {
+                        sliderCell(title: "Boost", property: $sharedPropertyies.raw.boostAmount)
+                    }
                 }
                 
                 Section("Theme Color") {
                     let allCases: [ThemeColor] = [.system, .light, .dark]
                     ForEach(allCases, id: \.self) { the in
-                        Button {
+                        clickCell(title: the.title, isSelected: sharedPropertyies.color.themeColor.value == the) {
                             sharedPropertyies.color.themeColor.value = the
-                        } label: {
-                            HStack {
-                                Text(the.title)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(ThemeColor.foreground)
-                                Spacer()
-                                if sharedPropertyies.color.themeColor.value == the {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(ThemeColor.highlightedYellow)
-                                }
-                            }
                         }
                     }
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.grouped)
             .preferredColorScheme(sharedPropertyies.color.themeColor.value.colorScheme)
             .navigationTitle(Text("Setting"))
             .navigationBarTitleDisplayMode(.inline)
@@ -61,15 +87,15 @@ struct SettingView: View {
         HStack(alignment: .center) {
             VStack(alignment: .leading) {
                 Text("\(title)")
-                    .font(.system(size: 13))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(ThemeColor.foreground)
                 Text(String(format: "%.02f", property.value.wrappedValue))
-                    .font(.system(size: 13))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(ThemeColor.highlightedYellow)
             }
             .gesture(
                 TapGesture(count: 2).onEnded { t in
-                    property.wrappedValue.value = property.wrappedValue.default
+                    property.wrappedValue.reset()
                 }
             )
             
@@ -83,20 +109,20 @@ struct SettingView: View {
         }
     }
     
-    @ViewBuilder func megaPixelPickerCell(title: String) -> some View {
+    @ViewBuilder func megaPixelPickerCell() -> some View {
         let bindMega = $sharedPropertyies.output.maxMegaPixel
         HStack(alignment: .center) {
             VStack(alignment: .leading) {
-                Text("\(title)")
-                    .font(.system(size: 13))
+                Text("Max Megapixels")
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(ThemeColor.foreground)
-                Text(String(format: "%dMP", bindMega.wrappedValue.value.rawValue))
-                    .font(.system(size: 13))
+                Text(String(format: "%d mp", bindMega.wrappedValue.value.rawValue))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(ThemeColor.highlightedYellow)
             }
             .gesture(
                 TapGesture(count: 2).onEnded { t in
-                    bindMega.wrappedValue.value = bindMega.wrappedValue.default
+                    bindMega.wrappedValue.reset()
                 }
             )
             
@@ -109,14 +135,30 @@ struct SettingView: View {
             .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
     }
+        
+    @ViewBuilder func clickCell(title: String, isSelected: Bool, click: @escaping () -> Void) -> some View {
+        Button {
+            if !isSelected {
+                click()
+            }
+        } label: {
+            HStack {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(ThemeColor.foreground)
+                Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(ThemeColor.highlightedYellow)
+                }
+            }
+        }
+    }
 }
 
 
 struct SettingViewPreview: PreviewProvider {
     static var previews: some View {
         return SettingView(presenting: .constant(true))
-            .ignoresSafeArea()
-            .border(.white, width: 1)
-            .background(.black)
     }
 }

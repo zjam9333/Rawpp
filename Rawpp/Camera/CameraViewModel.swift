@@ -20,14 +20,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var isFlashOn = false
     @Published private(set) var isCapturing = false
     @Published private(set) var isProcessing = false
-    @Published var rawOption = MappedCustomizeValue<RAWSaveOption, RAWSaveOption.RawValue>(name: "CameraViewModelCachedRawOption", default: .heif) { op in
-        return op.rawValue
-    } get: { va in
-        guard va > 0 else {
-            return .heif
-        }
-        return .init(rawValue: va)
-    }
     @Published var showPhoto: Bool = false
     @Published var showSetting: Bool = false
     
@@ -64,6 +56,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var showingEVIndicators = false
     @Published var isAppInBackground = false
     
+    @Published private var sharedPropertyies = CustomSettingProperties.shared
     @Published var cropFactor = CustomizeValue<CGFloat>(name: "CustomizeValue_cropFactor", default: 1, minValue: 1, maxValue: 2)
     
     private let feedbackGenerator = UISelectionFeedbackGenerator()
@@ -108,10 +101,10 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
         }.store(in: &subscriptions)
         
-        service.$allCameras.combineLatest(service.$currentCamera).combineLatest($cropFactor).receive(on: DispatchQueue.main).sink { [weak self] obj in
-            let currentDevice = obj.0.1
-            self?.currentCamera = obj.0.1
-            let allLenses: [SelectItem] = obj.0.0[currentDevice?.device.position ?? .back]?.map { d in
+        service.$currentCamera.combineLatest($cropFactor).receive(on: DispatchQueue.main).sink { [weak self] obj in
+            let currentDevice = obj.0
+            self?.currentCamera = obj.0
+            let allLenses: [SelectItem] = self?.service.allCameras[currentDevice?.device.position ?? .back]?.map { d in
                 let deviceSelected = currentDevice == d
                 var thisLenesSelections: [SelectItem] = []
                 do {
@@ -248,6 +241,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         let newPhotoObj = Photo(data: nil)
         photos.insert(newPhotoObj, at: 0)
+        let rawOption = sharedPropertyies.raw.rawOption
         for _ in 0..<burstTime {
             burstObject?.current += 1
             

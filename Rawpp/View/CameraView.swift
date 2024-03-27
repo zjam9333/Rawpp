@@ -411,45 +411,22 @@ struct CameraView: View {
         .overlay(alignment: .trailing) {
             
             VStack(alignment: .trailing) {
-                let isApple = viewModel.rawOption.value.contains(.apple)
-                HStack(spacing: 10) {
-                    Button {
-                        viewModel.touchFeedback()
-                        if viewModel.rawOption.value.contains(.apple) {
-                            viewModel.rawOption.value.remove(.apple)
-                        } else {
-                            viewModel.rawOption.value.insert(.apple)
-                        }
-                    } label: {
-                        Text("System")
-                            .underline(isApple)
-                            .padding(.vertical, 5)
-                    }
-                    
-                    Button {
-                        viewModel.touchFeedback()
-                        switch viewModel.rawOption.value {
-                        case .heif:
-                            viewModel.rawOption.value = .raw
-                        case .raw:
-                            viewModel.rawOption.value = [.raw, .heif]
-                        default:
-                            viewModel.rawOption.value = .heif
-                        }
-                    } label: {
+                Group {
+                    let ra = sharedPropertyies.raw.rawOption.value
+                    if ra.contains(.apple) {
+                        Text("APPLE Style")
+                    } else {
                         var title: String {
-                            if viewModel.rawOption.value.contains([.heif, .raw]) {
-                                return "R+H"
-                            } else if viewModel.rawOption.value.contains(.raw) {
+                            if ra.contains([.heif, .raw]) {
+                                return "RAW + HEIF"
+                            } else if ra.contains(.raw) {
                                 return "RAW"
-                            } else if viewModel.rawOption.value.contains(.heif) {
+                            } else if ra.contains(.heif) {
                                 return "HEIF"
                             }
                             return ""
                         }
                         Text(title)
-                            .underline(!isApple)
-                            .padding(.vertical, 5)
                     }
                 }
                 .foregroundStyle(ThemeColor.foreground)
@@ -471,7 +448,7 @@ struct CameraView: View {
                                 .foregroundStyle(ThemeColor.highlightedRed)
                         }
                     }
-                    .padding(.vertical, 5)
+                    .padding(.vertical, 10)
                     .frame(height: 24)
                 }
             }

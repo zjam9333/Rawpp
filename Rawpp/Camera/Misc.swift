@@ -448,6 +448,10 @@ struct MappedCustomizeValue<Value, MappedValue> where Value: Equatable, MappedVa
     }
     
     private var wrapObject: CustomizeValue<MappedValue>
+    
+    mutating func reset() {
+        value = `default`
+    }
 }
 
 class CustomSettingProperties: ObservableObject {
@@ -458,6 +462,15 @@ class CustomSettingProperties: ObservableObject {
     
     struct Raw {
         var boostAmount = CustomizeValue<Float>(name: "RawFilterProperties_boostAmount", default: 1, minValue: 0, maxValue: 1)
+        
+        var rawOption = MappedCustomizeValue<RAWSaveOption, RAWSaveOption.RawValue>(name: "CameraViewModelCachedRawOption", default: .heif) { op in
+            return op.rawValue
+        } get: { va in
+            guard va > 0 else {
+                return .heif
+            }
+            return .init(rawValue: va)
+        }
     }
     
     struct Output {
