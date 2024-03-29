@@ -22,44 +22,37 @@ struct SettingView: View {
                 Section("Output") {
                     sliderCell(title: "Heif Quality", property: $sharedPropertyies.output.heifLossyCompressionQuality)
                     megaPixelPickerCell()
+                    clickCell(title: "Auto Adjustment", isSelected: sharedPropertyies.output.autoAdjustment.value) {
+                        sharedPropertyies.output.autoAdjustment.value.toggle()
+                    }
                 }
                 
                 Section("Format") {
-                    let currentSaveOption = sharedPropertyies.raw.rawOption.value
-                    clickCell(title: "APPLE Style", isSelected: currentSaveOption.contains(.apple)) {
-                        sharedPropertyies.raw.rawOption.value.insert(.apple)
+                    let currentCaptureFormat = sharedPropertyies.raw.captureFormat.value
+                    clickCell(title: CaptureFormat.apple.title, isSelected: currentCaptureFormat.contains(.apple)) {
+                        sharedPropertyies.raw.captureFormat.value.insert(.apple)
                     }
                     
-                    let allSaveOptions: [RAWSaveOption] = [
+                    let allSaveOptions: [CaptureFormat] = [
                         .heif,
                         .raw,
                         [.heif, .raw],
                     ]
                     
                     ForEach(allSaveOptions, id: \.rawValue) { the in
-                        var title: String {
-                            if the.contains([.heif, .raw]) {
-                                return "RAW + HEIF"
-                            } else if the.contains(.raw) {
-                                return "RAW"
-                            } else if the.contains(.heif) {
-                                return "HEIF"
-                            }
-                            return ""
-                        }
                         var isSelected: Bool {
-                            if currentSaveOption.contains(.apple) {
+                            if currentCaptureFormat.contains(.apple) {
                                 return false
                             }
-                            return currentSaveOption == the
+                            return currentCaptureFormat == the
                         }
-                        clickCell(title: title, isSelected: isSelected) {
-                            sharedPropertyies.raw.rawOption.value = the
+                        clickCell(title: the.title, isSelected: isSelected) {
+                            sharedPropertyies.raw.captureFormat.value = the
                         }
                     }
                 }
                 
-                if !sharedPropertyies.raw.rawOption.value.contains(.apple) {
+                if !sharedPropertyies.raw.captureFormat.value.contains(.apple) {
                     Section("Raw Filter") {
                         sliderCell(title: "Boost", property: $sharedPropertyies.raw.boostAmount)
                     }
@@ -138,9 +131,7 @@ struct SettingView: View {
         
     @ViewBuilder func clickCell(title: String, isSelected: Bool, click: @escaping () -> Void) -> some View {
         Button {
-            if !isSelected {
-                click()
-            }
+            click()
         } label: {
             HStack {
                 Text(title)

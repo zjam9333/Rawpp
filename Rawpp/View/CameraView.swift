@@ -411,25 +411,6 @@ struct CameraView: View {
         .overlay(alignment: .trailing) {
             
             VStack(alignment: .trailing) {
-                Group {
-                    let ra = sharedPropertyies.raw.rawOption.value
-                    if ra.contains(.apple) {
-                        Text("APPLE Style")
-                    } else {
-                        var title: String {
-                            if ra.contains([.heif, .raw]) {
-                                return "RAW + HEIF"
-                            } else if ra.contains(.raw) {
-                                return "RAW"
-                            } else if ra.contains(.heif) {
-                                return "HEIF"
-                            }
-                            return ""
-                        }
-                        Text(title)
-                    }
-                }
-                .foregroundStyle(ThemeColor.foreground)
                 
                 Button {
                     viewModel.touchFeedback()
@@ -451,6 +432,9 @@ struct CameraView: View {
                     .padding(.vertical, 10)
                     .frame(height: 24)
                 }
+                
+                Text(sharedPropertyies.raw.captureFormat.value.title)
+                    .foregroundStyle(ThemeColor.foreground)
             }
         }
         .padding(.horizontal, 20)

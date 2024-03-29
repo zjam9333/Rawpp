@@ -114,12 +114,12 @@ struct ExposureValue: Equatable, Hashable {
     }()
 }
 
-struct RAWSaveOption: OptionSet {
+struct CaptureFormat: OptionSet {
     let rawValue: UInt8
     
-    static let raw = RAWSaveOption(rawValue: 1 << 1)
-    static let heif = RAWSaveOption(rawValue: 1)
-    static let apple = RAWSaveOption(rawValue: 1 << 7)
+    static let raw = CaptureFormat(rawValue: 1 << 1)
+    static let heif = CaptureFormat(rawValue: 1)
+    static let apple = CaptureFormat(rawValue: 1 << 7)
     
     var saveRAW: Bool {
         return contains(.raw)
@@ -127,6 +127,20 @@ struct RAWSaveOption: OptionSet {
     
     var saveJpeg: Bool {
         return contains(.apple) || contains(.heif)
+    }
+    
+    var title: String {
+        if contains(.apple) {
+            return "APPLE HDR"
+        }
+        if contains([.heif, .raw]) {
+            return "RAW + HEIF"
+        } else if contains(.raw) {
+            return "RAW"
+        } else if contains(.heif) {
+            return "HEIF"
+        }
+        return ""
     }
 }
 
@@ -345,6 +359,10 @@ extension CGFloat: CustomizeBasicValue {
     
 }
 
+extension Bool: CustomizeBasicValue {
+    
+}
+
 struct CustomizeValue<Value> where Value: CustomizeBasicValue {
     
     let name: String
@@ -463,7 +481,7 @@ class CustomSettingProperties: ObservableObject {
     struct Raw {
         var boostAmount = CustomizeValue<Float>(name: "RawFilterProperties_boostAmount", default: 1, minValue: 0, maxValue: 1)
         
-        var rawOption = MappedCustomizeValue<RAWSaveOption, RAWSaveOption.RawValue>(name: "CameraViewModelCachedRawOption", default: .heif) { op in
+        var captureFormat = MappedCustomizeValue<CaptureFormat, CaptureFormat.RawValue>(name: "CameraViewModelCachedCaptureFormat", default: .heif) { op in
             return op.rawValue
         } get: { va in
             guard va > 0 else {
@@ -475,6 +493,8 @@ class CustomSettingProperties: ObservableObject {
     
     struct Output {
         var heifLossyCompressionQuality = CustomizeValue<Float>(name: "RawFilterProperties_heifLossyCompressionQuality", default: 0.7, minValue: 0.1, maxValue: 1)
+        
+        var autoAdjustment = CustomizeValue<Bool>(name: "RawFilterProperties_autoAdjustment", default: true)
         
         var maxMegaPixel = MappedCustomizeValue<MegaPixel, MegaPixel.RawValue>(name: "RawFilterProperties_maxMegaPixel", default: .m12, minValue: .lowest, maxValue: .highest) { p in
             return p.rawValue

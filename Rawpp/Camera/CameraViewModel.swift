@@ -241,11 +241,11 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         let newPhotoObj = Photo(data: nil)
         photos.insert(newPhotoObj, at: 0)
-        let rawOption = sharedPropertyies.raw.rawOption
+        let captureFormat = sharedPropertyies.raw.captureFormat
         for _ in 0..<burstTime {
             burstObject?.current += 1
             
-            let result = await service.capturePhoto(rawOption: rawOption.value, location: lastLocation, flashMode: isFlashOn ? .on : .off, cropFactor: max(CGFloat(cropFactor.value), 1))
+            let result = await service.capturePhoto(captureFormat: captureFormat.value, location: lastLocation, flashMode: isFlashOn ? .on : .off, cropFactor: max(CGFloat(cropFactor.value), 1))
             switch result {
             case .failure(let alert):
                 var alert = alert

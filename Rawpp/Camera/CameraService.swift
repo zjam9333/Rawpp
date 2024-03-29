@@ -195,7 +195,7 @@ class CameraService {
         }
     }
     
-    func capturePhoto(rawOption: RAWSaveOption, location: CLLocation?, flashMode: AVCaptureDevice.FlashMode, cropFactor: CGFloat) async -> Result<Data?, AlertError> {
+    func capturePhoto(captureFormat: CaptureFormat, location: CLLocation?, flashMode: AVCaptureDevice.FlashMode, cropFactor: CGFloat) async -> Result<Data?, AlertError> {
         guard let photoOutputConnection = photoOutput.connection(with: .video), photoOutputConnection.isActive, photoOutputConnection.isEnabled else {
             let err = AlertError(title: "Camera Error", message: "Camera Device is not Enabled", primaryButtonTitle: "OK", secondaryButtonTitle: "Cancel", primaryAction: nil, secondaryAction: nil)
             return .failure(err)
@@ -209,7 +209,7 @@ class CameraService {
         photoSettings.photoQualityPrioritization = .speed
         photoSettings.isAutoVirtualDeviceFusionEnabled = false
         
-        if rawOption.contains(.apple) == false {
+        if captureFormat.contains(.apple) == false {
             let rawFormat = photoOutput.availableRawPhotoPixelFormatTypes.first { code in
                 return AVCapturePhotoOutput.isBayerRAWPixelFormat(code)
             }
@@ -231,7 +231,7 @@ class CameraService {
         
         func capturePhoto() async -> Data? {
             let photo = await withCheckedContinuation { con in
-                let custom = RAWCaptureDelegate.Custom(saveOption: rawOption, cropFactor: cropFactor, location: location)
+                let custom = RAWCaptureDelegate.Custom(captureFormat: captureFormat, cropFactor: cropFactor, location: location)
                 let delegate = RAWCaptureDelegate(custom: custom) { phot in
                     con.resume(returning: phot)
                 }

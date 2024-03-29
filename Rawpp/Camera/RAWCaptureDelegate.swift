@@ -20,7 +20,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     private var custom: Custom
     
     struct Custom {
-        var saveOption: RAWSaveOption
+        var captureFormat: CaptureFormat
         var cropFactor: CGFloat
         var location: CLLocation?
         fileprivate let customProperties = CustomSettingProperties.shared
@@ -56,7 +56,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             savePhotoData(notRawData)
             return notRawData
         }
-        let saveOption = custom.saveOption
+        let saveOption = custom.captureFormat
         if saveOption.saveRAW {
             savePhotoData(rawData)
         }
@@ -102,6 +102,15 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
         print("RAW", "outputed Image")
         
+        if (custom.customProperties.output.autoAdjustment.value) {
+            ciimg = autoAdjust(ciimg: ciimg)
+        }
+        
+        return await basicCIImageAdjustmentOutput(ciimg: ciimg)
+    }
+    
+    private func autoAdjust(ciimg: CIImage) -> CIImage {
+        var ciimg = ciimg
         // 自动调整
         let autoOptions: [CIImageAutoAdjustmentOption: Any] = [
             // 只使用最基本的enhance
@@ -118,8 +127,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             ciimg = fil.outputImage ?? ciimg
         }
         print("CIImage", "autoAdjustmentFilters used")
-        
-        return await basicCIImageAdjustmentOutput(ciimg: ciimg)
+        return ciimg
     }
     
     private func basicCIImageAdjustmentOutput(ciimg: CIImage) async -> Data? {
@@ -163,5 +171,14 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         let heif = ImageTool.heifData(ciimage: ciimg, quality: customProperties.output.heifLossyCompressionQuality.value)
         print("CIImage", "output heif")
         return heif
+    }
+    
+    func print(_ item: Any..., separator: String = " ", terminator: String = "\n") {
+        var strings = item.map { an in
+            return String(describing: an)
+        }
+        strings.insert("RAWCaptureDelegate", at: 0)
+        let p = strings.joined(separator: separator)
+        Rawpp.print(p, terminator: terminator)
     }
 }
