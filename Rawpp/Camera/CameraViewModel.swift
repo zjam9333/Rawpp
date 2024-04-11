@@ -98,6 +98,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 self?.resetToDefault()
             } else {
                 self?.startAcc()
+                self?.startGps()
             }
         }.store(in: &subscriptions)
         
@@ -122,6 +123,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                         Task {
                             await self.service.selectedCamera(d)
                             await self.setExposure()
+                            self.focus()
                         }
                     }
                     thisLenesSelections.append(this)
@@ -283,6 +285,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         Task {
             await service.toggleFrontCamera()
             await setExposure()
+            focus()
         }
     }
     
@@ -290,7 +293,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         isFlashOn.toggle()
     }
     
-    func focus(pointOfInterest: CGPoint) {
+    func focus(pointOfInterest: CGPoint = .init(x: 0.5, y: 0.5)) {
         Task {
             await service.focus(pointOfInterest: pointOfInterest)
         }
@@ -368,7 +371,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     private func startAcc() {
         motionManager.stopAccelerometerUpdates()
-        motionManager.accelerometerUpdateInterval = 2
+        motionManager.accelerometerUpdateInterval = 0.5
         motionManager.startAccelerometerUpdates(to: .main) { [weak self] dat, err in
             if let err = err {
                 print("startAccelerometerUpdates Err", err)
@@ -399,7 +402,14 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.delegate = self
         locationManager.requestAlwaysAuthorization()
         try? await locationManager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "AbcdefgKey")
+        startGps()
+    }
+    
+    private func startGps() {
         locationManager.startUpdatingLocation()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            self?.locationManager.stopUpdatingLocation()
+        }
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -407,6 +417,10 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         if let fi = locations.first {
             lastLocation = fi
         }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("locationManager didFailWithError", error)
     }
     
     // MARK: Program Exposure

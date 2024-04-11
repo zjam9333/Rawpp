@@ -42,15 +42,24 @@ struct PhotoReview: View {
                 Button {
                     presenting = false
                 } label: {
-                    Text("Close")
-                        .foregroundStyle(.white)
-                        .padding(10)
-                        .frame(width: 280, height: 44)
-                        .background(.gray)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                    Circle()
+                        .fill(ThemeColor.foreground.opacity(0.5))
+                        .frame(width: 50)
+                        .overlay {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(ThemeColor.background)
+                        }
                 }
             }
             .padding()
         }
     }
 }
+
+struct PhotoReviewPreview: PreviewProvider {
+    static var previews: some View {
+        return PhotoReview(photos: [.init(data: nil)], presenting: .constant(true))
+    }
+}
+

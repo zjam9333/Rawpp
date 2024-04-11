@@ -132,7 +132,9 @@ class CameraService {
         do {
             try device.lockForConfiguration()
             device.focusPointOfInterest = pointOfInterest
-            if device.isFocusModeSupported(.autoFocus) {
+            if (device.isFocusModeSupported(.continuousAutoFocus)) {
+                device.focusMode = .continuousAutoFocus
+            } else if device.isFocusModeSupported(.autoFocus) {
                 device.focusMode = .autoFocus
             }
             device.unlockForConfiguration()
@@ -177,12 +179,8 @@ class CameraService {
         }
         do {
             try device.lockForConfiguration()
-            if device.exposureMode != .continuousAutoExposure && device.exposureMode != .autoExpose {
-                if device.isExposureModeSupported(.continuousAutoExposure) {
-                    device.exposureMode = .continuousAutoExposure
-                } else if device.isExposureModeSupported(.autoExpose) {
-                    device.exposureMode = .autoExpose
-                }
+            if device.exposureMode != .custom {
+                device.exposureMode = .custom
             }
             if abs(device.exposureTargetBias - bias) > 0.01 {
                 await device.setExposureTargetBias(bias)

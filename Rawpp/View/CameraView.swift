@@ -177,83 +177,78 @@ struct CameraView: View {
                             Color.black.opacity(0.5)
                         }
                     }
-            
-                Group {
-                    Group {
-                        Color.white.frame(width: 1, height: 20)
-                        Color.white.frame(width: 10, height: 1)
-                    }
-                    .opacity(!viewModel.showingEVIndicators ? 1 : 0)
-                    
-                    VStack {
-                        switch viewModel.exposureMode.value {
-                        case .auto:
-                            valuesIndicator(currentValue: viewModel.exposureValue.value, values: ExposureValue.presets) { va in
-                                return ExposureValue.integers.contains(va)
-                            }
-                            
-                            largeInfoText(title: "ev", value: String(format: "%.1f", viewModel.exposureValue.value.floatValue))
-                                .foregroundStyle(.white)
-                        case .program:
-                            HStack(alignment: .bottom) {
-                                VStack {
-                                    largeInfoText(title: "iso", value: viewModel.manualExposure.iso.description)
-                                        .foregroundStyle(.white)
-                                    valuesIndicator(currentValue: viewModel.manualExposure, values: viewModel.programExposureAdvices) { va in
-                                        return false
-                                    }
-                                    largeInfoText(title: "ss", value: viewModel.manualExposure.ss.description)
-                                        .foregroundStyle(.white)
-                                }
-                                VStack {
-                                    valuesIndicator(currentValue: viewModel.exposureValue.value, values: ExposureValue.presets) { va in
-                                        return ExposureValue.integers.contains(va)
-                                    }
-                                    largeInfoText(title: "ev", value: String(format: "%.1f", viewModel.exposureValue.value.floatValue))
-                                        .foregroundStyle(.white)
-                                }
-                            }
-                        case .manual:
-                            HStack {
-                                VStack {
-                                    valuesIndicator(currentValue: viewModel.manualExposure.iso, values: ISOValue.presets) { va in
-                                        return ISOValue.integers.contains(va)
-                                    }
-                                    largeInfoText(title: "iso", value: viewModel.manualExposure.iso.description)
-                                        .foregroundStyle(.white)
-                                }
-                                
-                                VStack {
-                                    valuesIndicator(currentValue: viewModel.manualExposure.ss, values: ShutterSpeed.presets) { va in
-                                        return ShutterSpeed.integers.contains(va)
-                                    }
-                                    largeInfoText(title: "ss", value: viewModel.manualExposure.ss.description)
-                                        .foregroundStyle(.white)
-                                }
-                            }
-                        }
-                    }
-                    .padding(10)
-                    .background(Color.black.opacity(0.5))
-                    .opacity(viewModel.showingEVIndicators ? 1 : 0)
-                }
-                .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
-                .animation(viewModel.showingEVIndicators ? .default : .default.delay(1), value: viewModel.showingEVIndicators)
+                
+                centerExposureInfo
                 
                 gestureContainer(size: size)
-                
-                if viewModel.allLenses.count > 0 {
-                    Color.clear.overlay(alignment: .bottom) {
-                        lensesSelection
-                    }
-                }
-                
-                Color.clear.overlay(alignment: .top) {
-                    exposureInfo
-                }
             }
     }
     
+    
+    @ViewBuilder private var centerExposureInfo: some View {
+        
+        Group {
+            Group {
+                Color.white.frame(width: 1, height: 20)
+                Color.white.frame(width: 10, height: 1)
+            }
+            .opacity(!viewModel.showingEVIndicators ? 1 : 0)
+            
+            VStack {
+                switch viewModel.exposureMode.value {
+                case .auto:
+                    valuesIndicator(currentValue: viewModel.exposureValue.value, values: ExposureValue.presets) { va in
+                        return ExposureValue.integers.contains(va)
+                    }
+                    
+                    largeInfoText(title: "ev", value: String(format: "%.1f", viewModel.exposureValue.value.floatValue))
+                        .foregroundStyle(.white)
+                case .program:
+                    HStack(alignment: .bottom) {
+                        VStack {
+                            largeInfoText(title: "iso", value: viewModel.manualExposure.iso.description)
+                                .foregroundStyle(.white)
+                            valuesIndicator(currentValue: viewModel.manualExposure, values: viewModel.programExposureAdvices) { va in
+                                return false
+                            }
+                            largeInfoText(title: "ss", value: viewModel.manualExposure.ss.description)
+                                .foregroundStyle(.white)
+                        }
+                        VStack {
+                            valuesIndicator(currentValue: viewModel.exposureValue.value, values: ExposureValue.presets) { va in
+                                return ExposureValue.integers.contains(va)
+                            }
+                            largeInfoText(title: "ev", value: String(format: "%.1f", viewModel.exposureValue.value.floatValue))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                case .manual:
+                    HStack {
+                        VStack {
+                            valuesIndicator(currentValue: viewModel.manualExposure.iso, values: ISOValue.presets) { va in
+                                return ISOValue.integers.contains(va)
+                            }
+                            largeInfoText(title: "iso", value: viewModel.manualExposure.iso.description)
+                                .foregroundStyle(.white)
+                        }
+                        
+                        VStack {
+                            valuesIndicator(currentValue: viewModel.manualExposure.ss, values: ShutterSpeed.presets) { va in
+                                return ShutterSpeed.integers.contains(va)
+                            }
+                            largeInfoText(title: "ss", value: viewModel.manualExposure.ss.description)
+                                .foregroundStyle(.white)
+                        }
+                    }
+                }
+            }
+            .padding(10)
+            .background(Color.black.opacity(0.5))
+            .opacity(viewModel.showingEVIndicators ? 1 : 0)
+        }
+        .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
+        .animation(viewModel.showingEVIndicators ? .default : .default.delay(1), value: viewModel.showingEVIndicators)
+    }
     
     @ViewBuilder private var exposureInfo: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -526,7 +521,15 @@ struct CameraView: View {
             }
         }
         .onTapGesture {
-            viewModel.focus(pointOfInterest: .init(x: 0.5, y: 0.5))
+            viewModel.focus()
+        }
+        .overlay(alignment: .bottom) {
+            if viewModel.allLenses.count > 0 {
+                lensesSelection
+            }
+        }
+        .overlay(alignment: .top) {
+            exposureInfo
         }
         .frame(width: viewModel.videoOrientation.isLandscape ? size.height : size.width, height: viewModel.videoOrientation.isLandscape ? size.width : size.height)
         .rotateWithVideoOrientation(videoOrientation: viewModel.videoOrientation)
