@@ -151,7 +151,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         .store(in: &self.subscriptions)
         
-        $manualExposure.receive(on: DispatchQueue.main).sink { [weak self] _ in
+        $manualExposure.combineLatest($exposureValue).receive(on: DispatchQueue.main).sink { [weak self] _ in
             guard let self = self else {
                 return
             }
