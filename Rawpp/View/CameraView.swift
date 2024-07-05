@@ -387,6 +387,9 @@ struct CameraView: View {
                     .font(.system(size: 72, weight: .semibold))
             } else {
                 Button {
+                    guard viewModel.isCapturing == false else {
+                        return
+                    }
                     viewModel.touchFeedback()
                     viewModel.capturePhoto()
                 } label: {

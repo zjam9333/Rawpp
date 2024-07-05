@@ -205,7 +205,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @MainActor private func capturePhotoAsync() async {
         @Sendable @MainActor func toggleIsCapturing() async {
             self.isCapturing = true
-            try? await Task.sleep(nanoseconds: 0_200_000_000)
+            try? await Task.sleep(nanoseconds: 0_500_000_000)
             self.isCapturing = false
         }
         Task {
@@ -494,7 +494,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         
         // 找出组合
         let allShutters = ShutterSpeed.presets.filter { ss in
-            return ss.floatValue <= 0.11
+            return ss > ShutterSpeed(rawValue: 10)
         } // 太慢的不用
         let allISOs = ISOValue.presets.filter { ss in
 //            return ss.floatValue <= 1000

@@ -213,7 +213,11 @@ struct ISOValue: Equatable, Hashable, CustomStringConvertible {
     ]
 }
 
-struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible {
+struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible, Comparable {
+    static func < (lhs: ShutterSpeed, rhs: ShutterSpeed) -> Bool {
+        return lhs.rawValue < rhs.rawValue
+    }
+    
     private let rawValue: UInt
     
     init(rawValue: UInt) {
@@ -269,17 +273,13 @@ struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible {
         8000: 8064,
     ]
     
-    var floatValue: Float {
-        let f = Self.keyValues[rawValue] ?? Float(rawValue)
-        return 1 / f
-    }
-    
     var description: String {
         return "1/\(rawValue)"
     }
     
     var cmTime: CMTime {
-        return .init(value: .init(1), timescale: .init(rawValue))
+        let f = Self.keyValues[rawValue] ?? Float(rawValue)
+        return .init(value: .init(1), timescale: .init(f))
     }
     
     static let percent100: ShutterSpeed = .init(rawValue: 100)
