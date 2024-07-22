@@ -476,10 +476,11 @@ class CustomSettingProperties: ObservableObject {
     
     @Published var raw = Raw()
     @Published var output = Output()
-    @Published var color = Color()
+    @Published var theme = Theme()
+    @Published var general = General()
     
     struct Raw {
-        var boostAmount = CustomizeValue<Float>(name: "RawFilterProperties_boostAmount", default: 1, minValue: 0, maxValue: 1)
+        var boostAmount = CustomizeValue<Float>(name: "boostAmount", default: 1, minValue: 0, maxValue: 1)
         
         var captureFormat = MappedCustomizeValue<CaptureFormat, CaptureFormat.RawValue>(name: "CameraViewModelCachedCaptureFormat", default: .heif) { op in
             return op.rawValue
@@ -492,23 +493,27 @@ class CustomSettingProperties: ObservableObject {
     }
     
     struct Output {
-        var heifLossyCompressionQuality = CustomizeValue<Float>(name: "RawFilterProperties_heifLossyCompressionQuality", default: 0.7, minValue: 0.1, maxValue: 1)
+        var heifLossyCompressionQuality = CustomizeValue<Float>(name: "heifLossyCompressionQuality", default: 0.7, minValue: 0.1, maxValue: 1)
         
-        var autoAdjustment = CustomizeValue<Bool>(name: "RawFilterProperties_autoAdjustment", default: true)
+        var autoAdjustment = CustomizeValue<Bool>(name: "autoAdjustment", default: true)
         
-        var maxMegaPixel = MappedCustomizeValue<MegaPixel, MegaPixel.RawValue>(name: "RawFilterProperties_maxMegaPixel", default: .m12, minValue: .lowest, maxValue: .highest) { p in
+        var maxMegaPixel = MappedCustomizeValue<MegaPixel, MegaPixel.RawValue>(name: "maxMegaPixel", default: .m12, minValue: .lowest, maxValue: .highest) { p in
             return p.rawValue
         } get: { v in
             return .init(rawValue: v) ?? .m12
         }
     }
     
-    struct Color {
-        var themeColor = MappedCustomizeValue<ThemeColor, ThemeColor.RawValue>(name: "RawFilterProperties_themeColor", default: .system) { se in
+    struct Theme {
+        var themeColor = MappedCustomizeValue<ThemeColor, ThemeColor.RawValue>(name: "themeColor", default: .system) { se in
             return se.rawValue
         } get: { ge in
             return .init(rawValue: ge) ?? .system
         }
+    }
+    
+    struct General {
+        var resetExposureWhenExit = CustomizeValue<Bool>(name: "resetExposureWhenExit", default: false)
     }
     
     private init() { }

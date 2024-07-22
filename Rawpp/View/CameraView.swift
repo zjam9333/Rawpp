@@ -23,7 +23,7 @@ struct CameraView: View {
             bottomActions.zIndex(10)
         }
         .background(ThemeColor.background)
-        .preferredColorScheme(sharedPropertyies.color.themeColor.value.colorScheme)
+        .preferredColorScheme(sharedPropertyies.theme.themeColor.value.colorScheme)
         .fullScreenCover(isPresented: $viewModel.showPhoto) {
             PhotoReview(photos: viewModel.photos, presenting: $viewModel.showPhoto)
         }

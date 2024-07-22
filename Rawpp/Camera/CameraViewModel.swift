@@ -28,18 +28,18 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var burstCount: Int = 1
     @Published private(set) var burstObject: BurstObject? = nil
     
-    @Published var exposureMode = MappedCustomizeValue(name: "CustomizeValue_exposureMode", default: ExposureMode.program) { m in
+    @Published var exposureMode = MappedCustomizeValue(name: "exposureMode", default: ExposureMode.program) { m in
         return m.rawValue
     } get: { rawValue in
         return ExposureMode(rawValue: rawValue) ?? .program
     }
 
-    @Published var exposureValue = MappedCustomizeValue(name: "CustomizeValue_exposureValue", default: ExposureValue.zero) { m in
+    @Published var exposureValue = MappedCustomizeValue(name: "exposureValue", default: ExposureValue.zero) { m in
         return m.rawValue
     } get: { rawValue in
         return ExposureValue(rawValue: rawValue)
     }
-    @Published var programExposureShift = CustomizeValue<Int>(name: "CustomizeValue_programExposureShift", default: 0)
+    @Published var programExposureShift = CustomizeValue<Int>(name: "programExposureShift", default: 0)
     
     @Published private(set) var currentExposureInfo: DeviceExposureInfo = .unknown
     @Published var manualExposure: ExposureAdvice = .default
@@ -57,7 +57,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var isAppInBackground = false
     
     @Published private var sharedPropertyies = CustomSettingProperties.shared
-    @Published var cropFactor = CustomizeValue<CGFloat>(name: "CustomizeValue_cropFactor", default: 1, minValue: 1, maxValue: 2)
+    @Published var cropFactor = CustomizeValue<CGFloat>(name: "cropFactor", default: 1, minValue: 1, maxValue: 2)
     
     private let feedbackGenerator = UISelectionFeedbackGenerator()
     
@@ -130,7 +130,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 }
                 if deviceSelected && d.focalLength > 20 {
                     // 拓展几个缩放倍数，没有实际切换摄像头
-                    let factors: [CGFloat] = [1.1, 1.2, 1.4]
+                    let factors: [CGFloat] = [1.1, 1.2, 1.4, 2.0]
                     for factor in factors {
                         let title = String(format: "%.0f", ceil(CGFloat(d.focalLength) * factor))
                         let selected = self?.cropFactor.value == factor
@@ -279,6 +279,9 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private func resetToDefault() {
         burstCount = 1
         shutterTimer = 0
+        if sharedPropertyies.general.resetExposureWhenExit.value {
+            resetExposure()
+        }
     }
     
     func toggleFrontCamera() {

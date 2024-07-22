@@ -27,6 +27,12 @@ struct SettingView: View {
                     }
                 }
                 
+                Section("General") {
+                    clickCell(title: "Reset Exposure When Exit", isSelected: sharedPropertyies.general.resetExposureWhenExit.value) {
+                        sharedPropertyies.general.resetExposureWhenExit.value.toggle()
+                    }
+                }
+                
                 Section("Format") {
                     let currentCaptureFormat = sharedPropertyies.raw.captureFormat.value
                     clickCell(title: CaptureFormat.apple.title, isSelected: currentCaptureFormat.contains(.apple)) {
@@ -61,14 +67,14 @@ struct SettingView: View {
                 Section("Theme Color") {
                     let allCases: [ThemeColor] = [.system, .light, .dark]
                     ForEach(allCases, id: \.self) { the in
-                        clickCell(title: the.title, isSelected: sharedPropertyies.color.themeColor.value == the) {
-                            sharedPropertyies.color.themeColor.value = the
+                        clickCell(title: the.title, isSelected: sharedPropertyies.theme.themeColor.value == the) {
+                            sharedPropertyies.theme.themeColor.value = the
                         }
                     }
                 }
             }
             .listStyle(.grouped)
-            .preferredColorScheme(sharedPropertyies.color.themeColor.value.colorScheme)
+            .preferredColorScheme(sharedPropertyies.theme.themeColor.value.colorScheme)
             .navigationTitle(Text("Setting"))
             .navigationBarTitleDisplayMode(.inline)
         }
