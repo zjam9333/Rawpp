@@ -105,49 +105,9 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         service.$currentCamera.combineLatest($cropFactor).receive(on: DispatchQueue.main).sink { [weak self] obj in
             let currentDevice = obj.0
             self?.currentCamera = obj.0
-            let allLenses: [SelectItem] = self?.service.allCameras[currentDevice?.device.position ?? .back]?.map { d in
-                let deviceSelected = currentDevice == d
-                var thisLenesSelections: [SelectItem] = []
-                do {
-                    // 实际的摄像头
-                    let title = String(format: "%.0f", ceil(d.focalLength))
-                    let selected = deviceSelected && self?.cropFactor.value == 1
-                    let this = SelectItem(id: "\(d)-", isSelected: selected, isMain: true, title: title) {
-                        guard let self = self else {
-                            return
-                        }
-                        self.cropFactor.value = 1
-                        guard !deviceSelected else {
-                            return
-                        }
-                        Task {
-                            await self.service.selectedCamera(d)
-                            await self.setExposure()
-                            self.focus()
-                        }
-                    }
-                    thisLenesSelections.append(this)
-                }
-                if deviceSelected && d.focalLength > 20 {
-                    // 拓展几个缩放倍数，没有实际切换摄像头
-                    let factors: [CGFloat] = [1.1, 1.2, 1.4, 2.0]
-                    for factor in factors {
-                        let title = String(format: "%.0f", ceil(CGFloat(d.focalLength) * factor))
-                        let selected = self?.cropFactor.value == factor
-                        let croppedOption = SelectItem(id: "\(d)-\(factor)", isSelected: selected, isMain: false, title: title) {
-                            guard let self = self else {
-                                return
-                            }
-                            self.cropFactor.value = factor
-                        }
-                        thisLenesSelections.append(croppedOption)
-                    }
-                }
-                return thisLenesSelections
-            }.flatMap { i in
-                i
-            } ?? []
-            self?.allLenses = allLenses
+            if let currentDevice = currentDevice {
+                self?.sinkCurrentCamera(currentDevice)
+            }
         }
         .store(in: &self.subscriptions)
         
@@ -173,6 +133,49 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             self?.checkEV()
         }
         RunLoop.main.add(exposureMeterTimer!, forMode: .common)
+    }
+    
+    private func sinkCurrentCamera(_ currentDevice: CameraDevice) {
+        let serviceAll = service.allCameras[currentDevice.device.position] ?? []
+        let all = serviceAll.map { [weak self] d in
+            let deviceSelected = currentDevice == d
+            var thisLenesSelections: [SelectItem] = []
+            do {
+                // 实际的摄像头
+                let title = String(format: "%.0f", ceil(d.focalLength))
+                let selected = deviceSelected && self?.cropFactor.value == 1
+                let this = SelectItem(id: "\(d)-", isSelected: selected, isMain: true, title: title) {
+                    guard let self = self else {
+                        return
+                    }
+                    self.cropFactor.value = 1
+                    guard !deviceSelected else {
+                        return
+                    }
+                    Task {
+                        await self.service.selectedCamera(d)
+                        await self.setExposure()
+                        self.focus()
+                    }
+                }
+                thisLenesSelections.append(this)
+            }
+            if deviceSelected && d.focalLength > 20 {
+                // 拓展几个缩放倍数，没有实际切换摄像头
+                let preferFocalLengthes: [CGFloat] = [35, 50]
+                for mm in preferFocalLengthes {
+                    let factor: CGFloat = mm / CGFloat(d.focalLength)
+                    let croppedOption = SelectItem(id: "\(d)-\(factor)", isSelected: self?.cropFactor.value == factor, isMain: false, title: String(format: "%.0f", mm)) {
+                        self?.cropFactor.value = factor
+                    }
+                    thisLenesSelections.append(croppedOption)
+                }
+            }
+            return thisLenesSelections
+        }.flatMap { i in
+            i
+        }
+        self.allLenses = all
     }
     
     // MARK: Camera Service
@@ -384,7 +387,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
             let x = acc.acceleration.x
             let y = acc.acceleration.y
-            print("acceleration", x, y)
+//            print("acceleration", x, y)
             if abs(x) > abs(y) {
                 if abs(x) > 0.6 {
                     self?.videoOrientation = x > 0 ? .landscapeLeft : .landscapeRight

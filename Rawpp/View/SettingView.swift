@@ -21,7 +21,7 @@ struct SettingView: View {
             List {
                 Section("Output") {
                     sliderCell(title: "Heif Quality", property: $sharedPropertyies.output.heifLossyCompressionQuality)
-                    megaPixelPickerCell()
+//                    megaPixelPickerCell()
                     clickCell(title: "Auto Adjustment", isSelected: sharedPropertyies.output.autoAdjustment.value) {
                         sharedPropertyies.output.autoAdjustment.value.toggle()
                     }

@@ -288,9 +288,9 @@ struct ShutterSpeed: Equatable, Hashable, CustomStringConvertible, Comparable {
         // MARK: iphone不支持慢速快门
         //let ints = [-2, -4, -8, -15, -30, -60, -125, -250, -500, -1000, -4000]
         let ints: [UInt] = [
-            3, 4, 5,
-            6, 8, 10,
-            12, 15, 20,
+//            3, 4, 5,
+//            6, 8, 10,
+//            12, 15, 20, // 去除掉太慢的快门，不常用，还影响程序曝光效果
             25, 30, 40,
             50, 60, 80,
             100, 125, 160,

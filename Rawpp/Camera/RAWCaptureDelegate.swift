@@ -143,6 +143,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             ciimg = ciimg.cropped(to: croppedRect) // 直接裁了会损失原始数据，有其他办法？
         }
         
+        /* 不要缩放了，影响画质
         let megaPixelScale = custom.customProperties.output.maxMegaPixel.value.scaleFrom(originalSize: ciimg.extent.size)
         if megaPixelScale < 0.90 && megaPixelScale > 0 {
             let method = ScaleInterpolation.linear
@@ -165,6 +166,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
                 ciimg = scaleFilter.outputImage ?? ciimg
             }
         }
+         */
         
         // 输出heif
         let customProperties = custom.customProperties

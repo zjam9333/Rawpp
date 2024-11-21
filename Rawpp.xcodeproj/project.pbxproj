@@ -352,7 +352,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = F928WG99XC;
+				DEVELOPMENT_TEAM = 2JN958X5SK;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Rawpp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Raw++";
@@ -362,7 +362,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.myshoplinestg.sl.test167.debug;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zjjstudio.rawpp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -381,7 +381,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = F928WG99XC;
+				DEVELOPMENT_TEAM = 2JN958X5SK;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Rawpp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Raw++";
@@ -391,7 +391,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.myshoplinestg.sl.test167.debug;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zjjstudio.rawpp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
