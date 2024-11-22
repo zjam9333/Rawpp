@@ -57,7 +57,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var isAppInBackground = false
     
     @Published private var sharedPropertyies = CustomSettingProperties.shared
-    @Published var cropFactor = CustomizeValue<CGFloat>(name: "cropFactor", default: 1, minValue: 1, maxValue: 2)
+    @Published var cropFactor = CustomizeValue<CGFloat>(name: "cropFactor", default: 1, minValue: 1, maxValue: 10)
     
     private let feedbackGenerator = UISelectionFeedbackGenerator()
     
@@ -104,7 +104,6 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         
         service.$currentCamera.combineLatest($cropFactor).receive(on: DispatchQueue.main).sink { [weak self] obj in
             let currentDevice = obj.0
-            self?.currentCamera = obj.0
             if let currentDevice = currentDevice {
                 self?.sinkCurrentCamera(currentDevice)
             }
@@ -136,6 +135,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     private func sinkCurrentCamera(_ currentDevice: CameraDevice) {
+        currentCamera = currentDevice
         let serviceAll = service.allCameras[currentDevice.device.position] ?? []
         let all = serviceAll.map { [weak self] d in
             let deviceSelected = currentDevice == d
@@ -148,7 +148,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                     guard let self = self else {
                         return
                     }
-                    self.cropFactor.value = 1
+                    self.cropFactor.reset()
                     guard !deviceSelected else {
                         return
                     }
@@ -288,6 +288,7 @@ class CameraViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     func toggleFrontCamera() {
+        cropFactor.reset()
         Task {
             await service.toggleFrontCamera()
             await setExposure()

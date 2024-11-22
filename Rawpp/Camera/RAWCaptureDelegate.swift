@@ -52,7 +52,7 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
         guard photo?.isRawPhoto == true else {
             // apple处理的heic版本
-            let notRawData = await handleNotRawOutput(photoData: rawData) ?? rawData
+            let notRawData = rawData
             savePhotoData(notRawData)
             return notRawData
         }
@@ -79,13 +79,6 @@ class RAWCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
                 request.location = location
             }
         }
-    }
-    
-    private func handleNotRawOutput(photoData: Data) async -> Data? {
-        guard let ciimg = CIImage(data: photoData) else {
-            return nil
-        }
-        return await basicCIImageAdjustmentOutput(ciimg: ciimg)
     }
     
     private func handleRawOutput(photoData: Data) async -> Data? {
